@@ -160,12 +160,13 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         disconnect()
         lastClock = clock
         viewModelScope.launch {
-            repeat(3) { attempt ->
-                val c = open(clock)
+            // short first try: right after the app was killed Android's first connect can hang
+            listOf(6_000L, 10_000L, 15_000L).forEachIndexed { attempt, timeout ->
+                val c = open(clock, timeout)
                 val end = c.state.first { it is ConnState.Ready || it is ConnState.Failed }
                 if (end is ConnState.Ready || connection.value !== c) return@launch
                 if ((end as ConnState.Failed).reason.contains("pairing", ignoreCase = true)) return@launch
-                if (attempt < 2) delay(1500)
+                if (attempt < 2) delay(800)
             }
         }
     }
@@ -174,11 +175,11 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         lastClock?.let(::connect)
     }
 
-    private fun open(clock: FoundClock): ClockConnection {
+    private fun open(clock: FoundClock, timeoutMs: Long = 15_000): ClockConnection {
         val c = ClockConnection(getApplication(), clock.device)
         connection.value = c
         viewModelScope.launch {
-            c.connect()
+            c.connect(timeoutMs)
             if (c.state.value is ConnState.Ready) {
                 _reconnecting.value = false
                 loadConfig()

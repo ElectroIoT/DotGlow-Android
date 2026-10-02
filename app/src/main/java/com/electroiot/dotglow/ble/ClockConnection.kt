@@ -138,13 +138,16 @@ class ClockConnection(private val context: Context, private val device: Bluetoot
 
     // ---- connect / pair ------------------------------------------------------------
 
-    suspend fun connect() {
+    /** [timeoutMs]: for the link itself (normally < 1 s; Android sometimes hangs right after the app was killed). */
+    suspend fun connect(timeoutMs: Long = 15_000) {
         try {
             _state.value = ConnState.Connecting
             connected = CompletableDeferred()
             gatt = device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE)
-            if (!withTimeout(15_000) { connected.await() }) throw RpcException("Could not connect")
+            if (!withTimeout(timeoutMs) { connected.await() }) throw RpcException("Could not connect")
 
+            // Android caches a bonded device's services; a firmware update can change them.
+            gatt?.let { g -> runCatching { g.javaClass.getMethod("refresh").invoke(g) } }
             gattOp { it.discoverServices() }
             runCatching { gattOp { it.requestMtu(517) } }   // falls back to 23-byte packets
             val service = gatt?.getService(DotGlowProtocol.SERVICE) ?: throw RpcException("Not a DotGlow clock")
@@ -152,12 +155,21 @@ class ClockConnection(private val context: Context, private val device: Bluetoot
             val infoBytes = gattOp { g -> g.readCharacteristic(service.getCharacteristic(DotGlowProtocol.INFO)) } as ByteArray
             val info = parseInfo(String(infoBytes))
 
-            if (device.bondState != BluetoothDevice.BOND_BONDED) {
+            val wasBonded = device.bondState == BluetoothDevice.BOND_BONDED
+            if (!wasBonded) {
                 _state.value = ConnState.Pairing
                 pair()
             }
 
             val tx = service.getCharacteristic(DotGlowProtocol.TX)
+            // TX can only be read over an encrypted link: proves the pairing works on both sides.
+            if (!secureCheck(tx)) {
+                if (!wasBonded) throw RpcException("Could not set up an encrypted link")
+                // The phone still has a pairing the clock no longer knows (clock reset or reinstalled):
+                // drop it, so the next attempt pairs again (the caller retries).
+                removeBond()
+                throw RpcException("The clock was reset - connecting again to pair")
+            }
             gatt?.setCharacteristicNotification(tx, true)
             val cccd = tx.getDescriptor(DotGlowProtocol.CCCD)
             gattOp { g -> writeDescriptor(g, cccd, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE) }
@@ -180,7 +192,9 @@ class ClockConnection(private val context: Context, private val device: Bluetoot
                 if (d?.address != device.address) return
                 when (intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR)) {
                     BluetoothDevice.BOND_BONDED -> bonded.complete(true)
-                    BluetoothDevice.BOND_NONE -> bonded.complete(false)
+                    // only a failed attempt counts: a late BOND_NONE from removing an old pairing must not
+                    BluetoothDevice.BOND_NONE -> if (intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, -1) ==
+                        BluetoothDevice.BOND_BONDING) bonded.complete(false)
                 }
             }
         }
@@ -195,8 +209,40 @@ class ClockConnection(private val context: Context, private val device: Bluetoot
         }
     }
 
+    private suspend fun secureCheck(tx: BluetoothGattCharacteristic): Boolean =
+        runCatching { gattOp(8_000) { it.readCharacteristic(tx) } }.isSuccess
+
+    /** BluetoothDevice.removeBond() is hidden API, but it is the only way short of the Settings app. */
+    private suspend fun removeBond() {
+        val gone = CompletableDeferred<Unit>()
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context, intent: Intent) {
+                if (intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1) == BluetoothDevice.BOND_NONE) gone.complete(Unit)
+            }
+        }
+        ContextCompat.registerReceiver(context, receiver, IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED), ContextCompat.RECEIVER_EXPORTED)
+        try {
+            val ok = runCatching { device.javaClass.getMethod("removeBond").invoke(device) as Boolean }.getOrDefault(false)
+            if (!ok) throw RpcException("The clock was reset. Remove \"${device.name}\" in the phone's Bluetooth settings, then try again.")
+            kotlinx.coroutines.withTimeoutOrNull(5_000) { gone.await() }
+        } finally {
+            context.unregisterReceiver(receiver)
+        }
+    }
+
+    /**
+     * Ends the link and releases Android's GATT client right away: a connect that never got
+     * through gets no callback, and every unclosed client counts against Android's limit.
+     */
     fun disconnect() {
-        gatt?.let { runCatching { it.disconnect() } }
+        val g = gatt ?: return
+        gatt = null
+        runCatching { g.disconnect() }
+        runCatching { g.close() }
+        pending?.completeExceptionally(RpcException("Disconnected"))
+        waiting.values.forEach { it.completeExceptionally(RpcException("Disconnected")) }
+        waiting.clear()
+        if (_state.value !is ConnState.Failed) _state.value = ConnState.Disconnected
     }
 
     // ---- requests --------------------------------------------------------------------
@@ -227,8 +273,9 @@ class ClockConnection(private val context: Context, private val device: Bluetoot
     }
 
     /**
-     * Sends a firmware image to the OTA characteristic after "ota/begin". Each packet is a
-     * write with response, so the clock (which writes it to flash right away) sets the pace.
+     * Sends a firmware image to the OTA characteristic after "ota/begin". Writes without
+     * response when the clock allows it (~3x faster; Android's callback per packet still paces
+     * us, and the clock checks size + MD5 at "ota/end"), with response otherwise.
      */
     suspend fun sendFirmware(data: ByteArray, chunk: Int, onProgress: (Int) -> Unit) {
         val g = gatt ?: throw RpcException("Not connected")
@@ -236,10 +283,13 @@ class ClockConnection(private val context: Context, private val device: Bluetoot
             ?: throw RpcException("This clock's firmware is too old for Bluetooth updates")
         g.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)   // shorter interval: ~3x faster
         val size = chunk.coerceIn(20, mtu - 3)
+        val type = if (ota.properties and BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE != 0)
+            BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE else BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+        android.util.Log.i("DotGlow", "firmware: ${data.size} bytes, $size per write, no-response=${type == BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE}")
         var sent = 0
         while (sent < data.size) {
             val part = data.copyOfRange(sent, minOf(sent + size, data.size))
-            gattOp { writeCharacteristic(it, ota, part) }
+            gattOp { writeCharacteristic(it, ota, part, type) }
             sent += part.size
             onProgress(sent)
         }
@@ -270,13 +320,16 @@ class ClockConnection(private val context: Context, private val device: Bluetoot
         return ClockInfo(s("name"), s("fw"), s("board"), s("proto").toIntOrNull() ?: 0, s("asset"), s("ota") == "1")
     }
 
-    private fun writeCharacteristic(g: BluetoothGatt, c: BluetoothGattCharacteristic, value: ByteArray): Boolean =
+    private fun writeCharacteristic(
+        g: BluetoothGatt, c: BluetoothGattCharacteristic, value: ByteArray,
+        type: Int = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
+    ): Boolean =
         if (Build.VERSION.SDK_INT >= 33) {
-            g.writeCharacteristic(c, value, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT) == BluetoothGatt.GATT_SUCCESS
+            g.writeCharacteristic(c, value, type) == BluetoothGatt.GATT_SUCCESS
         } else {
             @Suppress("DEPRECATION")
             run {
-                c.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                c.writeType = type
                 c.value = value
                 g.writeCharacteristic(c)
             }
