@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.electroiot.dotglow.ble.ConnState
 import com.electroiot.dotglow.ui.AnimationsScreen
 import com.electroiot.dotglow.ui.AboutAppScreen
+import com.electroiot.dotglow.ui.StopwatchScreen
 import com.electroiot.dotglow.ui.AboutDeveloperScreen
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
@@ -188,6 +189,7 @@ class MainActivity : FragmentActivity() {
                 Page.SpecialDays.name -> SpecialDaysScreen(vm, snackbar, back)
                 Page.Updates.name -> UpdatesScreen(vm, snackbar, back)
                 Page.System.name -> SystemScreen(vm, snackbar, back)
+                Page.Stopwatch.name -> StopwatchScreen(vm, snackbar, onGuide = { page = Page.Guide }, onBack = back)
                 Page.Security.name -> SecurityScreen(
                     vm, snackbar,
                     appLockOn = lockOn,

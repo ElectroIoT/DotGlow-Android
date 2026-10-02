@@ -44,6 +44,12 @@ class DemoClock : ClockLink {
     )
     private val events = mutableListOf(Triple(1, 1, "Happy New Year") to 1, Triple(8, 15, "Independence Day") to 4)
     private val started = System.currentTimeMillis()
+    private var swOn = false
+    private var swRun = false
+    private var swStored = 0L
+    private var swStartedAt = 0L
+    private fun swMs() = swStored + if (swRun) System.currentTimeMillis() - swStartedAt else 0
+    private fun swJson() = buildJsonObject { put("on", swOn); put("run", swRun); put("ms", swMs()) }
 
     override suspend fun connect(timeoutMs: Long) {
         delay(600)
@@ -74,6 +80,15 @@ class DemoClock : ClockLink {
                 ok()
             }
             "event/del" -> { args["i"].toString().toIntOrNull()?.let { if (it in events.indices) events.removeAt(it) }; ok() }
+            "stopwatch" -> {
+                when (args["a"].toString()) {
+                    "start" -> { swOn = true; if (!swRun) { swRun = true; swStartedAt = System.currentTimeMillis() } }
+                    "pause" -> if (swRun) { swStored = swMs(); swRun = false }
+                    "reset" -> { swOn = true; swRun = false; swStored = 0 }
+                    "exit" -> { swOn = false; swRun = false; swStored = 0 }
+                }
+                ok(swJson())
+            }
             "ota/begin" -> RpcResult(400, JsonPrimitive("The demo clock can't be updated"))
             "wifi", "password", "phones/forget", "factory", "restart" -> RpcResult(400, JsonPrimitive("Not available on the demo clock"))
             else -> ok()   // anim, digits, show, sync ... : nothing to show without a display
@@ -95,6 +110,7 @@ class DemoClock : ClockLink {
             put("up", ((System.currentTimeMillis() - started) / 1000).toString())
             put("version", "0.2.0"); put("board", "Demo"); put("mode", "clock")
             put("latest", "0.2.0"); put("newer", false); put("otaMsg", ""); put("otaBusy", false)
+            put("sw", swJson())
             put("light", -1); put("brNow", (cfg["br"] as? JsonPrimitive)?.content?.toIntOrNull() ?: 6)
         }
     }

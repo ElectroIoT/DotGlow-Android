@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Usb
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Wifi
@@ -298,7 +299,7 @@ fun ConnectingScreen(state: ConnState?, onRetry: () -> Unit, onCancel: () -> Uni
 // =================================================================================
 
 /** Pages reachable from the home screen. */
-enum class Page { Home, Wifi, Clock, Brightness, Display, Animations, Message, SpecialDays, Updates, Security, System, Guide, Flash, AboutApp, AboutDev }
+enum class Page { Home, Wifi, Clock, Brightness, Display, Animations, Message, SpecialDays, Updates, Security, System, Guide, Flash, AboutApp, AboutDev, Stopwatch }
 
 private val effects = listOf(1 to "Sparkle", 2 to "Wipe", 3 to "Rain", 4 to "Boxes", 5 to "Pac-Man")
 
@@ -415,6 +416,8 @@ fun DashboardScreen(
                 NavRow(Icons.Default.Message, "Message", "Your own scrolling text") { onOpen(Page.Message) }
                 RowDivider()
                 NavRow(Icons.Default.Cake, "Special days", "Birthdays and anniversaries") { onOpen(Page.SpecialDays) }
+                RowDivider()
+                NavRow(Icons.Default.Timer, "Stopwatch", if (status?.stopwatch?.on == true) "Running on the clock" else "Start, pause, reset") { onOpen(Page.Stopwatch) }
                 RowDivider()
                 NavRow(Icons.Default.SystemUpdate, "Updates", status?.let { "v${it.version}" + if (it.newer) " · update available" else "" } ?: "") { onOpen(Page.Updates) }
                 RowDivider()

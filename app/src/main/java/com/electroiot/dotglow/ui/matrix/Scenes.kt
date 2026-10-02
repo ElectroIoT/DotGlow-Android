@@ -331,3 +331,27 @@ class Timed(private val scene: Scene, private val ms: Long) : Scene {
     override val durationMs = ms
     override fun draw(f: Frame, tMs: Long) = scene.draw(f, tMs)
 }
+
+/** The clock's stopwatch face (firmware drawStopwatch): MM:SS, HH:MM after an hour, tenths on the bottom row. */
+class StopwatchScene(private val ms: () -> Long, private val running: () -> Boolean) : Scene {
+    override val durationMs = Long.MAX_VALUE
+    override fun draw(f: Frame, tMs: Long) {
+        val total = ms().coerceAtLeast(0)
+        val s = total / 1000
+        val h = (s / 3600).coerceAtMost(99).toInt(); val m = (s / 60 % 60).toInt(); val sec = (s % 60).toInt()
+        val wide = f.width >= 47
+        val d = when {
+            wide -> intArrayOf(h / 10, h % 10, m / 10, m % 10, sec / 10, sec % 10)
+            s < 3600 -> intArrayOf(m / 10, m % 10, sec / 10, sec % 10)
+            else -> intArrayOf(h / 10, h % 10, m / 10, m % 10)
+        }
+        val x0 = (f.width - if (wide) 45 else 28) / 2
+        val hide = !running() && total > 0 && System.currentTimeMillis() % 1000 >= 650
+        if (!hide) {
+            d.forEachIndexed { i, v -> drawDigit(f, x0 + DIGIT_X[i], v) }
+            for (k in 0 until if (wide) 2 else 1) for (c in 0..1) for (y in intArrayOf(1, 2, 4, 5)) f[x0 + COLON_X[k] + c, y] = true
+        }
+        val len = if (wide || s < 3600) (total % 1000 * f.width / 1000).toInt() else sec * f.width / 60
+        for (x in 0 until len) f[x, 7] = true
+    }
+}

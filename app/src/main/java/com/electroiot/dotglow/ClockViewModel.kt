@@ -60,7 +60,13 @@ data class ClockStatus(
     val otaBusy: Boolean,
     val light: Int,           // light sensor 0..100, -1 = off
     val brightnessNow: Int,
+    val stopwatch: Stopwatch = Stopwatch(),
 )
+
+/** The clock's stopwatch; [ms] as reported at [at] (phone SystemClock.elapsedRealtime). */
+data class Stopwatch(val on: Boolean = false, val running: Boolean = false, val ms: Long = 0, val at: Long = 0) {
+    fun now(): Long = ms + if (running) android.os.SystemClock.elapsedRealtime() - at else 0
+}
 
 /** All settings, from the "config" request; keys match the clock's `set` keys. */
 data class ClockConfig(private val o: JsonObject) {
@@ -438,6 +444,24 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         disconnect()
     }
 
+    // ---- stopwatch ---------------------------------------------------------------------------
+
+    /** start, pause, reset, exit: the clock answers with the new state, shown at once. */
+    fun stopwatch(action: String) {
+        viewModelScope.launch {
+            val r = run("stopwatch", mapOf("a" to action)) ?: return@launch
+            val sw = (r.body as? JsonObject)?.let(::parseStopwatch) ?: return@launch
+            _status.value = _status.value?.copy(stopwatch = sw)
+        }
+    }
+
+    private fun parseStopwatch(o: JsonObject) = Stopwatch(
+        on = (o["on"] as? JsonPrimitive)?.booleanOrNull ?: false,
+        running = (o["run"] as? JsonPrimitive)?.booleanOrNull ?: false,
+        ms = (o["ms"] as? JsonPrimitive)?.content?.toLongOrNull() ?: 0,
+        at = android.os.SystemClock.elapsedRealtime(),
+    )
+
     // ---- parsing ---------------------------------------------------------------------------
     private fun parseStatus(o: JsonObject): ClockStatus {
         fun s(k: String) = (o[k] as? JsonPrimitive)?.content ?: ""
@@ -449,6 +473,7 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
             version = s("version"), board = s("board"), mode = s("mode"),
             latest = s("latest"), newer = b("newer"), otaMessage = s("otaMsg"), otaBusy = b("otaBusy"),
             light = (o["light"] as? JsonPrimitive)?.intOrNull ?: -1, brightnessNow = i("brNow"),
+            stopwatch = (o["sw"] as? JsonObject)?.let(::parseStopwatch) ?: Stopwatch(),
         )
     }
 }

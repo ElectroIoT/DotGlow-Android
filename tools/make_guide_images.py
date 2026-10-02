@@ -181,5 +181,22 @@ for i, t in enumerate(['1  Plug the board into the phone', '2  Find my board  ->
     d.text((760, y + i * 46 - 30), t, font=font(32, True if i == 0 else False), fill=TXT)
 im.save(os.path.join(OUT, 'guide_usb_otg.png'), optimize=True)
 
+# ---- optional stopwatch button ---------------------------------------------------------------
+im, d = canvas('Optional: stopwatch button', 'Any push button. Tap = start / pause, hold = reset, hold again = back to the clock')
+spots = board(d, 80, 230, 'Your board', 'button pin and GND', [('SW', 'GPIO4 or GPIO13'), ('GND', 'GND')])
+# push button
+bx, by = 900, 330
+d.rounded_rectangle((bx, by, bx + 220, by + 160), 18, fill=(40, 42, 50), outline=(110, 116, 130), width=4)
+d.ellipse((bx + 60, by + 30, bx + 160, by + 130), fill=RED, outline=(255, 140, 140), width=4)
+d.text((bx + 110, by + 190), 'push button', font=font(30, True), fill=MUT, anchor='ma')
+d.line([spots['SW'], (bx, spots['SW'][1])], fill=WIRE['CS'], width=9)
+d.line([spots['GND'], (bx, spots['GND'][1])], fill=WIRE['GND'], width=9)
+y = 640
+for i, (k, v) in enumerate([('ESP32-S3', 'GPIO4'), ('ESP32 DevKit', 'GPIO13'), ('ESP8266 NodeMCU', 'not supported yet')]):
+    d.text((900, y + i * 50), k, font=font(32, True), fill=TXT)
+    d.text((1260, y + i * 50), v, font=font(32), fill=MUT if i == 2 else WIRE['CS'])
+d.text((80, 820), 'No resistor needed: the pin has an internal pull-up. Without a button nothing changes.', font=font(28), fill=MUT)
+im.save(os.path.join(OUT, 'guide_button.png'), optimize=True)
+
 for f in sorted(os.listdir(OUT)):
     print(f, os.path.getsize(os.path.join(OUT, f)) // 1024, 'KB')
