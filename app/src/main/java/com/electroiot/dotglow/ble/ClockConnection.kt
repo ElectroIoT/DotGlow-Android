@@ -40,7 +40,15 @@ sealed interface ConnState {
     data object Disconnected : ConnState
 }
 
-data class ClockInfo(val name: String, val firmware: String, val board: String, val protocol: Int)
+/** [asset]: the release file this clock runs (e.g. firmware-esp32s3.bin); [bluetoothUpdates]: has the OTA characteristic. */
+data class ClockInfo(
+    val name: String,
+    val firmware: String,
+    val board: String,
+    val protocol: Int,
+    val asset: String = "",
+    val bluetoothUpdates: Boolean = false,
+)
 
 /**
  * One BLE connection to a clock: connect -> discover -> MTU -> read INFO -> pair (PIN on the
@@ -218,6 +226,26 @@ class ClockConnection(private val context: Context, private val device: Bluetoot
         }
     }
 
+    /**
+     * Sends a firmware image to the OTA characteristic after "ota/begin". Each packet is a
+     * write with response, so the clock (which writes it to flash right away) sets the pace.
+     */
+    suspend fun sendFirmware(data: ByteArray, chunk: Int, onProgress: (Int) -> Unit) {
+        val g = gatt ?: throw RpcException("Not connected")
+        val ota = g.getService(DotGlowProtocol.SERVICE)?.getCharacteristic(DotGlowProtocol.OTA)
+            ?: throw RpcException("This clock's firmware is too old for Bluetooth updates")
+        g.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)   // shorter interval: ~3x faster
+        val size = chunk.coerceIn(20, mtu - 3)
+        var sent = 0
+        while (sent < data.size) {
+            val part = data.copyOfRange(sent, minOf(sent + size, data.size))
+            gattOp { writeCharacteristic(it, ota, part) }
+            sent += part.size
+            onProgress(sent)
+        }
+        g.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_BALANCED)
+    }
+
     private fun received(value: ByteArray) {
         rxLine.append(String(value))
         while (true) {
@@ -239,7 +267,7 @@ class ClockConnection(private val context: Context, private val device: Bluetoot
     private fun parseInfo(text: String): ClockInfo {
         val o: JsonObject = DotGlowProtocol.json.parseToJsonElement(text).jsonObject
         fun s(k: String) = (o[k] as? JsonPrimitive)?.content ?: ""
-        return ClockInfo(s("name"), s("fw"), s("board"), s("proto").toIntOrNull() ?: 0)
+        return ClockInfo(s("name"), s("fw"), s("board"), s("proto").toIntOrNull() ?: 0, s("asset"), s("ota") == "1")
     }
 
     private fun writeCharacteristic(g: BluetoothGatt, c: BluetoothGattCharacteristic, value: ByteArray): Boolean =

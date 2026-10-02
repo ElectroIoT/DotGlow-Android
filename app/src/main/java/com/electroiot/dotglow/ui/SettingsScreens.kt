@@ -45,7 +45,14 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.electroiot.dotglow.BtUpdate
 import com.electroiot.dotglow.ClockViewModel
+import com.electroiot.dotglow.ble.ConnState
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.DisposableEffect
 
 // =================================================================================
 // WiFi
@@ -312,6 +319,7 @@ fun UpdatesScreen(vm: ClockViewModel, snackbar: SnackbarHostState, onBack: () ->
         SectionCard("Automatic") {
             SwitchRow("Automatic updates", c.flag("autoUpdate"), "Installs new versions at night and after power-on") { vm.set("autoUpdate", it) }
         }
+        BluetoothUpdateCard(vm, s?.version.orEmpty())
     }
     Confirm("Install the update?", if (confirm) "The clock downloads the new firmware and restarts. It takes about a minute." else null,
         "Install", onConfirm = vm::installUpdate, onDismiss = { confirm = false })
@@ -407,4 +415,67 @@ fun SystemScreen(vm: ClockViewModel, snackbar: SnackbarHostState, onBack: () -> 
         onConfirm = { if (ask == "factory") vm.factoryReset() else vm.restartClock() },
         onDismiss = { ask = null },
     )
+}
+
+/** Update over Bluetooth: works without WiFi (the phone downloads, the clock receives). */
+@Composable
+private fun BluetoothUpdateCard(vm: ClockViewModel, installed: String) {
+    val conn by vm.connState.collectAsStateWithLifecycle()
+    val catalog by vm.catalog.collectAsStateWithLifecycle()
+    val update by vm.btUpdate.collectAsStateWithLifecycle()
+    val info = (conn as? ConnState.Ready)?.info
+    var confirm by remember { mutableStateOf(false) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { vm.bluetoothUpdate(it) } }
+    LaunchedEffect(Unit) { if (catalog == null) vm.loadCatalog() }
+    DisposableEffect(Unit) { onDispose { vm.clearBtUpdate() } }
+
+    SectionCard("Update over Bluetooth") {
+        if (info != null && !info.bluetoothUpdates) {
+            Text("This clock's firmware is too old for Bluetooth updates. Update it once over WiFi (above) or with " +
+                "Install firmware over USB.", color = Muted, fontSize = 14.sp)
+            return@SectionCard
+        }
+        val latest = catalog?.latestVersion.orEmpty()
+        val newer = latest.isNotEmpty() && installed.isNotEmpty() && versionNewer(latest, installed)
+        InfoRow("Latest for this app", if (latest.isEmpty()) "-" else "v$latest", highlight = newer)
+        Text("No WiFi needed: the phone downloads the firmware and sends it to the clock (about a minute).",
+            color = Muted, fontSize = 13.sp)
+        Spacer(Modifier.height(10.dp))
+        when (val u = update) {
+            is BtUpdate.Busy -> {
+                Text(u.title, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(6.dp))
+                if (u.progress != null) {
+                    LinearProgressIndicator(progress = { u.progress }, modifier = Modifier.fillMaxWidth().height(8.dp))
+                    Text("${(u.progress * 100).toInt()} %  -  keep the phone close to the clock", color = Muted, fontSize = 13.sp)
+                } else {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                }
+            }
+            BtUpdate.Done -> Text("Installed. The clock restarts and the app reconnects by itself.", color = Good)
+            else -> {
+                (u as? BtUpdate.Failed)?.let { Text(it.message, color = MaterialTheme.colorScheme.error, fontSize = 14.sp) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (latest.isNotEmpty()) {
+                        if (newer) Button(onClick = { confirm = true }) { Text("Install v$latest") }
+                        else OutlinedButton(onClick = { confirm = true }) { Text("Reinstall v$latest") }
+                    }
+                    TextButton(onClick = { picker.launch(arrayOf("application/octet-stream", "*/*")) }) { Text("From a file") }
+                }
+            }
+        }
+    }
+    Confirm("Update over Bluetooth?", if (confirm) "The phone sends the new firmware to the clock, then the clock restarts." else null,
+        "Install", onConfirm = { vm.bluetoothUpdate() }, onDismiss = { confirm = false })
+}
+
+/** "0.10.0" > "0.9.1" */
+private fun versionNewer(a: String, b: String): Boolean {
+    val x = a.split('.').map { it.toIntOrNull() ?: 0 }
+    val y = b.split('.').map { it.toIntOrNull() ?: 0 }
+    for (i in 0 until maxOf(x.size, y.size)) {
+        val d = x.getOrElse(i) { 0 } - y.getOrElse(i) { 0 }
+        if (d != 0) return d > 0
+    }
+    return false
 }

@@ -7,7 +7,12 @@ import com.electroiot.dotglow.ble.ClockConnection
 import com.electroiot.dotglow.ble.ClockScanner
 import com.electroiot.dotglow.ble.ConnState
 import com.electroiot.dotglow.ble.FoundClock
+import com.electroiot.dotglow.ble.RpcException
 import com.electroiot.dotglow.ble.RpcResult
+import com.electroiot.dotglow.flash.FirmwareCatalog
+import android.net.Uri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -80,6 +85,13 @@ data class ClockConfig(private val o: JsonObject) {
 
 data class SpecialDay(val index: Int, val month: Int, val day: Int, val anim: Int, val text: String)
 data class WifiNetwork(val ssid: String, val rssi: Int, val locked: Boolean)
+
+/** A firmware update sent from the phone over Bluetooth. */
+sealed interface BtUpdate {
+    data class Busy(val title: String, val progress: Float? = null) : BtUpdate
+    data object Done : BtUpdate
+    data class Failed(val message: String) : BtUpdate
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ClockViewModel(app: Application) : AndroidViewModel(app) {
@@ -205,6 +217,8 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun disconnect() {
+        btJob?.cancel()
+        _btUpdate.value = null
         reconnectJob?.cancel()
         _reconnecting.value = false
         pollJob?.cancel()
@@ -343,6 +357,70 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
     fun installUpdate() = command("ota/install", done = "Installing - the clock restarts when it's done")
     fun restartClock() = command("restart", done = "Restarting...")
     fun factoryReset() = command("factory", done = "Resetting the clock...")
+
+    // ---- firmware update over Bluetooth --------------------------------------------------------
+
+    private val _catalog = MutableStateFlow<FirmwareCatalog?>(null)
+    val catalog: StateFlow<FirmwareCatalog?> = _catalog.asStateFlow()
+    private val _btUpdate = MutableStateFlow<BtUpdate?>(null)
+    val btUpdate: StateFlow<BtUpdate?> = _btUpdate.asStateFlow()
+    private var btJob: Job? = null
+
+    fun loadCatalog() {
+        viewModelScope.launch { runCatching { FirmwareCatalog.load() }.onSuccess { _catalog.value = it } }
+    }
+
+    /** Sends new firmware to the clock: the latest release, or [file] picked on the phone. */
+    fun bluetoothUpdate(file: Uri? = null) {
+        val c = connection.value ?: return
+        val info = (c.state.value as? ConnState.Ready)?.info ?: return
+        if (btJob?.isActive == true) return
+        btJob = viewModelScope.launch {
+            pollJob?.cancel()   // keep the link free for the firmware
+            try {
+                if (!info.bluetoothUpdates) throw RpcException("This clock's firmware is too old for Bluetooth updates. Update it once over WiFi or USB.")
+                val key = FirmwareCatalog.chipKey(info.asset, info.board)
+                val image = if (file != null) {
+                    withContext(Dispatchers.IO) { getApplication<Application>().contentResolver.openInputStream(file)?.use { it.readBytes() } }
+                        ?: throw RpcException("Could not read that file")
+                } else {
+                    _btUpdate.value = BtUpdate.Busy("Getting the latest version...")
+                    val cat = _catalog.value ?: FirmwareCatalog.load().also { _catalog.value = it }
+                    val fw = cat.app(key) ?: throw RpcException("No firmware for ${info.board}")
+                    FirmwareCatalog.download(getApplication(), fw) { done, total ->
+                        _btUpdate.value = BtUpdate.Busy("Downloading", if (total > 0) done.toFloat() / total else null)
+                    }
+                }
+                if (image.size > 0x8002 && image[0x8000] == 0xAA.toByte() && image[0x8001] == 0x50.toByte())
+                    throw RpcException("That is a full image for USB. Pick the app file (firmware-$key.bin).")
+                if (FirmwareCatalog.imageChip(image, 0x10000) != key)
+                    throw RpcException("That file is not firmware for ${info.board}.")
+
+                _btUpdate.value = BtUpdate.Busy("Sending to the clock", 0f)
+                val begin = c.call("ota/begin", mapOf("size" to image.size, "md5" to FirmwareCatalog.md5(image)), 30_000)
+                if (!begin.ok) throw RpcException(begin.message)
+                val chunk = (begin.body as? JsonObject)?.get("chunk")?.let { (it as? JsonPrimitive)?.intOrNull } ?: 180
+                var shown = -1
+                c.sendFirmware(image, chunk) { sent ->
+                    val pct = (sent * 100L / image.size).toInt()
+                    if (pct != shown) { shown = pct; _btUpdate.value = BtUpdate.Busy("Sending to the clock", pct / 100f) }
+                }
+                _btUpdate.value = BtUpdate.Busy("Checking the firmware...")
+                val end = c.call("ota/end", timeoutMs = 30_000)
+                if (!end.ok) throw RpcException(end.message)
+                _btUpdate.value = BtUpdate.Done   // the clock restarts; watchForDrop reconnects
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                runCatching { c.call("ota/abort", timeoutMs = 3000) }
+                _btUpdate.value = BtUpdate.Failed(e.message ?: "Update failed")
+                if (c.state.value is ConnState.Ready) startPolling()
+            }
+        }
+    }
+
+    fun clearBtUpdate() {
+        if (btJob?.isActive != true) _btUpdate.value = null
+    }
 
     override fun onCleared() {
         disconnect()

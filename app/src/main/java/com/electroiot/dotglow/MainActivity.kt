@@ -30,7 +30,11 @@ import com.electroiot.dotglow.ui.ConnectingScreen
 import com.electroiot.dotglow.ui.DashboardScreen
 import com.electroiot.dotglow.ui.DisplayScreen
 import com.electroiot.dotglow.ui.DotGlowTheme
+import com.electroiot.dotglow.flash.FlashViewModel
+import com.electroiot.dotglow.ui.FlashScreen
+import com.electroiot.dotglow.ui.GUIDE_BOARD_ESP8266
 import com.electroiot.dotglow.ui.GuideScreen
+import androidx.compose.runtime.mutableIntStateOf
 import com.electroiot.dotglow.ui.LockScreen
 import com.electroiot.dotglow.ui.MessageScreen
 import com.electroiot.dotglow.ui.Page
@@ -44,6 +48,7 @@ import com.electroiot.dotglow.ui.WifiScreen
 
 class MainActivity : FragmentActivity() {
     private val vm: ClockViewModel by viewModels()
+    private val flashVm: FlashViewModel by viewModels()
     private lateinit var lock: AppLock
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -107,11 +112,22 @@ class MainActivity : FragmentActivity() {
         var settingPin by remember { mutableStateOf(false) }
         if (settingPin) SetPinDialog(onSet = { lock.setPin(it); lockOn = true; settingPin = false }, onDismiss = { settingPin = false })
 
+        var guideBoard by rememberSaveable { mutableIntStateOf(0) }
         val back = { page = Page.Home }
-        BackHandler(enabled = page != Page.Home) { back() }
+        BackHandler(enabled = page != Page.Home) {
+            if (page == Page.Flash) flashVm.reset()
+            back()
+        }
 
-        // The setup guide works without a clock (it explains how to build one).
-        if (page == Page.Guide) { GuideScreen(snackbar, onBack = back); return }
+        // The setup guide and the USB installer work without a clock.
+        if (page == Page.Guide) {
+            GuideScreen(snackbar, initialBoard = guideBoard, onFlash = { page = Page.Flash }, onBack = { guideBoard = 0; back() })
+            return
+        }
+        if (page == Page.Flash) {
+            FlashScreen(flashVm, snackbar, onBack = back, onGuide8266 = { guideBoard = GUIDE_BOARD_ESP8266; page = Page.Guide })
+            return
+        }
 
         val c = conn
         val ready = c is ConnState.Ready || reconnecting
@@ -128,6 +144,7 @@ class MainActivity : FragmentActivity() {
                     onRescan = { vm.stopScan(); vm.startScan() },
                     onPick = vm::connect,
                     onGuide = { page = Page.Guide },
+                    onFlash = { page = Page.Flash },
                 )
             }
             !ready -> ConnectingScreen(c, onRetry = vm::retry) { vm.disconnect(); vm.startScan() }

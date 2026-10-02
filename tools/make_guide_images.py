@@ -91,6 +91,9 @@ wiring('ESP32-S3', 'DevKitC-1 (N16R8 etc.)',
 wiring('ESP32', 'DevKit (WROOM-32)',
        {'VCC': 'VIN (5V)', 'GND': 'GND', 'DIN': 'GPIO23', 'CS': 'GPIO5', 'CLK': 'GPIO18'},
        'guide_wiring_esp32.png', 'Wiring: ESP32 DevKit')
+wiring('NodeMCU', 'ESP8266 (ESP-12E / 12F)',
+       {'VCC': 'VIN (5V)', 'GND': 'GND', 'DIN': 'D7', 'CS': 'D6', 'CLK': 'D5'},
+       'guide_wiring_esp8266.png', 'Wiring: ESP8266 NodeMCU')
 
 
 # ---- more modules: chain + power + capacitors ----------------------------------------
@@ -122,7 +125,7 @@ d.text((700, 832), '2 A for 8 modules', font=font(26), fill=MUT, anchor='ma')
 d.line((660, 760, 660, 560), fill=WIRE['VCC'], width=8)   # clear of board 2's capacitor label
 d.line((780, 760, 780, 690), fill=WIRE['GND'], width=8)
 d.rounded_rectangle((900, 760, 1300, 870), 18, fill=(16, 53, 58), outline=(31, 107, 114), width=3)
-d.text((1100, 785), 'ESP32 / ESP32-S3', font=font(32, True), fill=TXT, anchor='ma')
+d.text((1100, 785), 'ESP32 / S3 / ESP8266', font=font(32, True), fill=TXT, anchor='ma')
 d.text((1100, 828), 'VIN from the 5 V rail, GND shared', font=font(24), fill=MUT, anchor='ma')
 d.line((960, 760, 960, 560), fill=WIRE['VCC'], width=7)
 d.line((1000, 760, 1000, 690), fill=WIRE['GND'], width=7)
@@ -138,14 +141,45 @@ d.rounded_rectangle((x + 120, 205, x + 330, 285), 40, fill=(70, 50, 20), outline
 d.text((x + 225, 245), 'LDR', font=font(36, True), fill=(255, 220, 140), anchor='mm')
 d.line((x + 330, 245, x + 520, 245), fill=TXT, width=8)
 d.ellipse((x + 505, 230, x + 535, 260), fill=(230, 200, 90))
-d.text((x + 560, 245), 'GPIO1 (S3)  /  GPIO34 (ESP32)', font=font(36, True), fill=TXT, anchor='lm')
+for i, t in enumerate(['GPIO1  (ESP32-S3)', 'GPIO34  (ESP32)', 'A0  (ESP8266)']):
+    d.text((x + 560, 245 + i * 46), t, font=font(34, True), fill=TXT if i == 0 else MUT, anchor='lm')
 d.line((x + 520, 260, x + 520, 420), fill=TXT, width=8)
 d.rectangle((x + 490, 420, x + 550, 560), outline=(200, 200, 210), width=6)
 d.text((x + 580, 490), '10 kΩ', font=font(38, True), fill=TXT, anchor='lm')
 d.line((x + 520, 560, x + 520, 680), fill=WIRE['GND'], width=8)
 d.text((x + 520, 720), 'GND', font=font(40, True), fill=WIRE['GND'], anchor='mm')
-d.text((80, 800), 'Then in the app: Brightness & night  ->  Auto brightness  ->  on', font=font(32), fill=MUT)
+d.text((80, 800), 'Then turn on Auto brightness (DotGlow app, or the ESP8266 clock web page)', font=font(32), fill=MUT)
 im.save(os.path.join(OUT, 'guide_ldr.png'), optimize=True)
+
+# ---- phone -> USB-OTG -> board (flashing from the app) --------------------------------------
+im, d = canvas('Install firmware from your phone', 'USB-OTG adapter (or a USB-C to micro-USB / USB-C data cable)')
+# phone
+d.rounded_rectangle((90, 200, 390, 740), 46, fill=(12, 13, 17), outline=(110, 116, 130), width=6)
+d.rounded_rectangle((115, 250, 365, 660), 16, fill=(24, 27, 36))
+d.text((240, 300), 'DotGlow', font=font(40, True), fill=RED, anchor='ma')
+d.rounded_rectangle((140, 390, 340, 420), 12, fill=(52, 56, 70))
+d.rounded_rectangle((140, 390, 280, 420), 12, fill=RED)
+d.text((240, 450), 'Installing  70 %', font=font(28), fill=TXT, anchor='ma')
+d.rounded_rectangle((210, 708, 270, 730), 6, fill=(70, 74, 86))   # USB-C port
+# OTG adapter
+d.line((240, 730, 240, 760), fill=(200, 204, 214), width=14)
+d.rounded_rectangle((180, 755, 300, 805), 10, fill=(70, 74, 86), outline=(150, 155, 168), width=3)
+d.text((240, 825), 'OTG adapter', font=font(28, True), fill=MUT, anchor='ma')
+# cable
+d.line([(300, 780), (560, 780), (640, 690), (700, 600)], fill=(200, 204, 214), width=12, joint='curve')
+d.text((430, 730), 'data cable', font=font(28, True), fill=MUT, anchor='ma')
+# board
+d.rounded_rectangle((690, 360, 1110, 700), 26, fill=(16, 53, 58), outline=(31, 107, 114), width=4)
+d.rounded_rectangle((680, 560, 730, 620), 8, fill=(201, 204, 212))
+d.text((760, 400), 'ESP32 / ESP32-S3', font=font(38, True), fill=TXT)
+d.text((760, 450), 'or ESP8266 NodeMCU', font=font(32), fill=MUT)
+d.rounded_rectangle((900, 520, 1060, 640), 10, fill=(40, 40, 46), outline=(90, 90, 100), width=3)
+d.text((980, 580), 'ESP', font=font(36, True), fill=TXT, anchor='mm')
+# steps
+y = 760
+for i, t in enumerate(['1  Plug the board into the phone', '2  Find my board  ->  allow USB', '3  Install  (about 20-60 s)']):
+    d.text((760, y + i * 46 - 30), t, font=font(32, True if i == 0 else False), fill=TXT)
+im.save(os.path.join(OUT, 'guide_usb_otg.png'), optimize=True)
 
 for f in sorted(os.listdir(OUT)):
     print(f, os.path.getsize(os.path.join(OUT, f)) // 1024, 'KB')

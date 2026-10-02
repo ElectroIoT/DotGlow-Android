@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
@@ -51,14 +52,25 @@ import androidx.compose.ui.window.DialogProperties
 import com.electroiot.dotglow.GuideLinks
 import com.electroiot.dotglow.R
 
-private data class Board(val name: String, @DrawableRes val image: Int, val pins: List<Pair<String, String>>, val ldrPin: String)
+private data class Board(
+    val name: String,
+    @DrawableRes val image: Int,
+    val pins: List<Pair<String, String>>,
+    val ldrPin: String,
+    val esp8266: Boolean = false,   // the ESP8266 Matrix Clock: no Bluetooth, set up from its web page
+)
 
 private val boards = listOf(
     Board("ESP32-S3", R.drawable.guide_wiring_esp32s3,
         listOf("VCC" to "5V", "GND" to "GND", "DIN" to "GPIO11", "CS" to "GPIO10", "CLK" to "GPIO12"), "GPIO1"),
     Board("ESP32 DevKit", R.drawable.guide_wiring_esp32,
         listOf("VCC" to "VIN (5V)", "GND" to "GND", "DIN" to "GPIO23", "CS" to "GPIO5", "CLK" to "GPIO18"), "GPIO34"),
+    Board("ESP8266", R.drawable.guide_wiring_esp8266,
+        listOf("VCC" to "VIN (5V)", "GND" to "GND", "DIN" to "D7", "CS" to "D6", "CLK" to "D5"), "A0", esp8266 = true),
 )
+
+/** Index of the ESP8266 tab, for opening the guide straight on it. */
+const val GUIDE_BOARD_ESP8266 = 2
 
 @Composable
 private fun Step(number: Int, title: String, content: @Composable () -> Unit) {
@@ -76,7 +88,7 @@ private fun Step(number: Int, title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun Bullet(text: String) {
+internal fun Bullet(text: String) {
     Row(Modifier.padding(vertical = 3.dp)) {
         Text("•", color = LedRed, modifier = Modifier.width(16.dp))
         Text(text)
@@ -85,7 +97,7 @@ private fun Bullet(text: String) {
 
 /** A guide picture; tap to see it full screen. */
 @Composable
-private fun GuideImage(@DrawableRes res: Int, description: String) {
+internal fun GuideImage(@DrawableRes res: Int, description: String) {
     var zoom by remember { mutableStateOf(false) }
     Image(
         painterResource(res), description, contentScale = ContentScale.FillWidth,
@@ -101,7 +113,7 @@ private fun GuideImage(@DrawableRes res: Int, description: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GuideScreen(snackbar: SnackbarHostState, onBack: () -> Unit) {
+fun GuideScreen(snackbar: SnackbarHostState, initialBoard: Int = 0, onFlash: () -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     val links = remember { GuideLinks(context) }
     var videoUrl by remember { mutableStateOf(links.videoUrl) }
@@ -109,7 +121,7 @@ fun GuideScreen(snackbar: SnackbarHostState, onBack: () -> Unit) {
     LaunchedEffect(Unit) {
         if (links.refresh()) { videoUrl = links.videoUrl; videoTitle = links.videoTitle }
     }
-    var boardIndex by remember { mutableIntStateOf(0) }
+    var boardIndex by remember { mutableIntStateOf(initialBoard) }
     val board = boards[boardIndex]
 
     SubPage("Setup guide", snackbar, onBack) {
@@ -130,18 +142,21 @@ fun GuideScreen(snackbar: SnackbarHostState, onBack: () -> Unit) {
         }
 
         Step(1, "What you need") {
-            Bullet("An ESP32-S3 or ESP32 DevKit board (not ESP32-S2: it has no Bluetooth)")
+            Bullet("A board: ESP32-S3, ESP32 DevKit, or ESP8266 NodeMCU / Wemos D1 mini (not ESP32-S2: no Bluetooth)")
             Bullet("A MAX7219 4-in-1 LED matrix (8x32, the common blue \"FC-16\" module)")
             Bullet("5 jumper wires (female-female for most modules)")
             Bullet("A good 5 V / 1 A USB adapter and cable")
             Bullet("Optional: 470-1000 µF capacitor, LDR + 10 kΩ resistor")
+            Spacer(Modifier.height(6.dp))
+            InfoRow("ESP32 / ESP32-S3", "DotGlow: app + WiFi")
+            InfoRow("ESP8266", "Matrix Clock: WiFi + web page")
         }
 
         Step(2, "Connect the display") {
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 boards.forEachIndexed { i, b ->
                     SegmentedButton(selected = boardIndex == i, onClick = { boardIndex = i },
-                        shape = SegmentedButtonDefaults.itemShape(i, boards.size)) { Text(b.name) }
+                        shape = SegmentedButtonDefaults.itemShape(i, boards.size)) { Text(b.name, maxLines = 1, fontSize = 13.sp) }
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -150,21 +165,47 @@ fun GuideScreen(snackbar: SnackbarHostState, onBack: () -> Unit) {
             board.pins.forEach { (m, e) -> InfoRow("Display $m", "${board.name} $e") }
         }
 
-        Step(3, "Install the DotGlow firmware") {
-            Text("Flash the firmware once, from a computer (PlatformIO or Arduino IDE, see the GitHub page). " +
-                "Flashing straight from this app over a USB-OTG cable is coming in a later update.")
+        Step(3, "Install the firmware") {
+            Text("Plug the board into this phone with a USB-OTG adapter (or a USB-C data cable) and tap the button. " +
+                "The app finds out which board it is and installs the right firmware" +
+                (if (board.esp8266) " (Matrix Clock for ESP8266)." else " (DotGlow)."))
+            Spacer(Modifier.height(10.dp))
+            Button(onClick = onFlash) { Text("Install firmware") }
+            Spacer(Modifier.height(6.dp))
+            Text("From a computer instead: PlatformIO or Arduino IDE, see the GitHub page.", color = Muted, fontSize = 13.sp)
         }
 
-        Step(4, "Pair the app with your clock") {
-            Bullet("Plug the clock in. It shows an animation and its welcome text.")
-            Bullet("Open DotGlow and tap your clock (\"DotGlow-XXXX\") in the list.")
-            Bullet("The clock shows a 6-digit PIN on its display. Type it in the pairing request on your phone.")
-        }
+        if (board.esp8266) {
+            Step(4, "Connect it to WiFi") {
+                Bullet("Power the clock. With no WiFi saved it scrolls its setup hotspot: \"MatrixClock-XXXX\".")
+                Bullet("On your phone, join that WiFi. The setup page opens by itself (or open http://192.168.4.1).")
+                Bullet("Pick your home WiFi, type its password and save. The clock restarts and gets the time.")
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = { context.startActivity(Intent(android.provider.Settings.ACTION_WIFI_SETTINGS)) }) {
+                    Text("Open WiFi settings")
+                }
+            }
+            Step(5, "Settings page") {
+                Bullet("The clock scrolls its IP address after connecting. Open it in a browser (or http://matrixclock.local).")
+                Bullet("Brightness, night mode, animations, messages, special days, display size, updates: all on that page.")
+                Bullet("Protect the page with a password: Settings password card.")
+                Bullet("FLASH button: short press shows the IP, hold 5 s for WiFi setup, hold 10 s to remove the page password.")
+                Spacer(Modifier.height(6.dp))
+                Text("ESP8266 has no Bluetooth, so this app can install its firmware but cannot change its settings.",
+                    color = Muted, fontSize = 13.sp)
+            }
+        } else {
+            Step(4, "Pair the app with your clock") {
+                Bullet("Plug the clock in. It shows an animation and its welcome text.")
+                Bullet("Open DotGlow and tap your clock (\"DotGlow-XXXX\") in the list.")
+                Bullet("The clock shows a 6-digit PIN on its display. Type it in the pairing request on your phone.")
+            }
 
-        Step(5, "Connect it to WiFi") {
-            Bullet("In the app, tap Set up next to \"This clock isn't on WiFi yet\" (or Settings → WiFi).")
-            Bullet("Pick your network, type its password, Save & connect.")
-            Bullet("The clock restarts, gets the time from the internet, and the app reconnects by itself.")
+            Step(5, "Connect it to WiFi") {
+                Bullet("In the app, tap Set up next to \"This clock isn't on WiFi yet\" (or Settings → WiFi).")
+                Bullet("Pick your network, type its password, Save & connect.")
+                Bullet("The clock restarts, gets the time from the internet, and the app reconnects by itself.")
+            }
         }
 
         SectionCard("Optional: more modules") {
@@ -179,7 +220,8 @@ fun GuideScreen(snackbar: SnackbarHostState, onBack: () -> Unit) {
         SectionCard("Optional: light sensor") {
             GuideImage(R.drawable.guide_ldr, "Light sensor wiring")
             Spacer(Modifier.height(10.dp))
-            Text("LDR from 3V3 to ${board.ldrPin}, 10 kΩ from ${board.ldrPin} to GND. Then turn on Settings → Brightness & night → Auto brightness.", fontSize = 14.sp)
+            Text("LDR from 3V3 to ${board.ldrPin}, 10 kΩ from ${board.ldrPin} to GND. Then turn on Auto brightness " +
+                (if (board.esp8266) "on the clock's settings page." else "in Settings → Brightness & night."), fontSize = 14.sp)
         }
 
         SectionCard("Troubleshooting") {
@@ -189,6 +231,7 @@ fun GuideScreen(snackbar: SnackbarHostState, onBack: () -> Unit) {
                 InfoRow("Upside down", "Settings → Display → flip")
                 InfoRow("Keeps restarting", "Better 5 V supply")
                 InfoRow("Can't pair", "Use the PIN on the display")
+                InfoRow("Install fails", "Data cable; hold BOOT")
             }
         }
     }

@@ -12,6 +12,7 @@ import java.util.UUID
  *  - INFO  read, open      {"name","fw","board","proto"}: identify a clock before pairing
  *  - RX    write, paired   requests, one JSON object per line: {"id":7,"op":"set","args":{"k":"br","v":"5"}}
  *  - TX    notify, paired  responses, one JSON object per line: {"id":7,"code":200,"body":...}
+ *  - OTA   write, paired   raw firmware bytes between "ota/begin" and "ota/end" (firmware 0.2+)
  *
  * Lines can be longer than one BLE packet: both sides split them into MTU-sized chunks
  * and join them again at the '\n'.
@@ -21,6 +22,7 @@ object DotGlowProtocol {
     val INFO: UUID = UUID.fromString("6f4a0002-1d2c-4a8e-9c3d-2b7e5f9a1c00")
     val RX: UUID = UUID.fromString("6f4a0003-1d2c-4a8e-9c3d-2b7e5f9a1c00")
     val TX: UUID = UUID.fromString("6f4a0004-1d2c-4a8e-9c3d-2b7e5f9a1c00")
+    val OTA: UUID = UUID.fromString("6f4a0005-1d2c-4a8e-9c3d-2b7e5f9a1c00")
     val CCCD: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
     const val VERSION = 1

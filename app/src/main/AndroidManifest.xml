@@ -12,6 +12,8 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
 
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+    <!-- installing firmware on a new board over USB-OTG; phones without USB host still get the app -->
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
 
     <!-- Only to read the setup-guide links (manoranjan.dev/dotglow/guide.json). -->
     <uses-permission android:name="android.permission.INTERNET" />

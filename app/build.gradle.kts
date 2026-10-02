@@ -31,6 +31,13 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+    testOptions {
+        unitTests.all { test ->
+            // ./gradlew testDebugUnitTest -PflashPort=COM5 -PflashImage=path/to/full.bin
+            listOf("flashPort", "flashImage").forEach { k -> project.findProperty(k)?.let { test.systemProperty(k, it) } }
+            test.testLogging { showStandardStreams = true }
+        }
+    }
     buildFeatures {
         compose = true
     }
@@ -51,6 +58,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.biometric)
+    implementation(libs.usb.serial)
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation(libs.junit)
+    testImplementation(libs.jserialcomm)   // FlasherHardwareTest: flash a board on this computer
 }

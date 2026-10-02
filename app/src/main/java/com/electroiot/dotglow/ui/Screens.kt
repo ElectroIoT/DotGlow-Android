@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -138,6 +139,7 @@ fun ScanScreen(
     onRescan: () -> Unit,
     onPick: (FoundClock) -> Unit,
     onGuide: () -> Unit,
+    onFlash: () -> Unit,
 ) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
@@ -184,6 +186,8 @@ fun ScanScreen(
             }
             SectionCard("New here?") {
                 NavRow(Icons.Default.MenuBook, "Setup guide", "Parts, wiring, first setup, video") { onGuide() }
+                RowDivider()
+                NavRow(Icons.Default.Usb, "Install firmware", "New ESP32, ESP32-S3 or ESP8266 (NodeMCU) board, over USB") { onFlash() }
             }
         }
     }
@@ -271,7 +275,7 @@ fun ConnectingScreen(state: ConnState?, onRetry: () -> Unit, onCancel: () -> Uni
 // =================================================================================
 
 /** Pages reachable from the home screen. */
-enum class Page { Home, Wifi, Clock, Brightness, Display, Animations, Message, SpecialDays, Updates, Security, System, Guide }
+enum class Page { Home, Wifi, Clock, Brightness, Display, Animations, Message, SpecialDays, Updates, Security, System, Guide, Flash }
 
 private val effects = listOf(1 to "Sparkle", 2 to "Wipe", 3 to "Rain", 4 to "Boxes", 5 to "Pac-Man")
 
@@ -376,6 +380,8 @@ fun DashboardScreen(
             }
             SectionCard("Help") {
                 NavRow(Icons.Default.MenuBook, "Setup guide", "Wiring, first setup, video") { onOpen(Page.Guide) }
+                RowDivider()
+                NavRow(Icons.Default.Usb, "Install firmware on a new board", "ESP32, ESP32-S3, ESP8266 (NodeMCU) over USB") { onOpen(Page.Flash) }
             }
             Spacer(Modifier.height(24.dp))
         }
