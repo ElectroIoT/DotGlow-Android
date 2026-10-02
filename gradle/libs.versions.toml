@@ -7,6 +7,7 @@ activityCompose = "1.9.3"
 composeBom = "2024.12.01"
 coroutines = "1.9.0"
 kotlinxSerialization = "1.7.3"
+biometric = "1.1.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -23,6 +24,7 @@ androidx-material-icons-extended = { group = "androidx.compose.material", name =
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 junit = { group = "junit", name = "junit", version = "4.13.2" }
 
 [plugins]

@@ -13,6 +13,9 @@
 
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
 
+    <!-- Only to read the setup-guide links (manoranjan.dev/dotglow/guide.json). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"

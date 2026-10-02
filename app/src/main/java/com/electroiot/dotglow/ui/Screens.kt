@@ -30,6 +30,16 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Cake
+import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Message
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -68,7 +78,7 @@ import com.electroiot.dotglow.ble.ClockInfo
 import com.electroiot.dotglow.ble.ConnState
 import com.electroiot.dotglow.ble.FoundClock
 
-private val ledText = TextStyle(
+val ledText = TextStyle(
     fontFamily = FontFamily.Monospace,
     fontWeight = FontWeight.Bold,
     color = LedRed,
@@ -76,7 +86,7 @@ private val ledText = TextStyle(
 )
 
 @Composable
-private fun SectionCard(title: String, content: @Composable () -> Unit) {
+fun SectionCard(title: String, content: @Composable () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
         shape = RoundedCornerShape(16.dp),
@@ -92,7 +102,7 @@ private fun SectionCard(title: String, content: @Composable () -> Unit) {
 
 /** Dotted LED-panel backdrop with glowing red text, like the real display. */
 @Composable
-private fun LedHero(big: String, small: String = "", caption: String = "") {
+fun LedHero(big: String, small: String = "", caption: String = "") {
     Box(
         Modifier
             .fillMaxWidth()
@@ -127,6 +137,7 @@ fun ScanScreen(
     onGrant: () -> Unit,
     onRescan: () -> Unit,
     onPick: (FoundClock) -> Unit,
+    onGuide: () -> Unit,
 ) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
@@ -166,10 +177,13 @@ fun ScanScreen(
                             color = Muted, modifier = Modifier.padding(vertical = 12.dp),
                         )
                     }
-                    LazyColumn {
+                    LazyColumn(Modifier.weight(1f, fill = false)) {
                         items(clocks, key = { it.address }) { clock -> ClockRow(clock) { onPick(clock) } }
                     }
                 }
+            }
+            SectionCard("New here?") {
+                NavRow(Icons.Default.MenuBook, "Setup guide", "Parts, wiring, first setup, video") { onGuide() }
             }
         }
     }
@@ -197,7 +211,7 @@ private fun ClockRow(clock: FoundClock, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SignalBars(rssi: Int) {
+fun SignalBars(rssi: Int) {
     val level = when {
         rssi > -60 -> 4
         rssi > -70 -> 3
@@ -214,7 +228,7 @@ private fun SignalBars(rssi: Int) {
 // =================================================================================
 
 @Composable
-fun ConnectingScreen(state: ConnState?, onCancel: () -> Unit) {
+fun ConnectingScreen(state: ConnState?, onRetry: () -> Unit, onCancel: () -> Unit) {
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -244,6 +258,10 @@ fun ConnectingScreen(state: ConnState?, onCancel: () -> Unit) {
             }
         }
         Spacer(Modifier.height(24.dp))
+        if (state is ConnState.Failed) {
+            Button(onClick = onRetry) { Text("Try again") }
+            Spacer(Modifier.height(8.dp))
+        }
         OutlinedButton(onClick = onCancel) { Text(if (state is ConnState.Failed) "Back" else "Cancel") }
     }
 }
@@ -251,6 +269,9 @@ fun ConnectingScreen(state: ConnState?, onCancel: () -> Unit) {
 // =================================================================================
 // Dashboard
 // =================================================================================
+
+/** Pages reachable from the home screen. */
+enum class Page { Home, Wifi, Clock, Brightness, Display, Animations, Message, SpecialDays, Updates, Security, System, Guide }
 
 private val effects = listOf(1 to "Sparkle", 2 to "Wipe", 3 to "Rain", 4 to "Boxes", 5 to "Pac-Man")
 
@@ -260,11 +281,12 @@ fun DashboardScreen(
     info: ClockInfo,
     status: ClockStatus?,
     brightness: Int,
+    reconnecting: Boolean,
     snackbar: SnackbarHostState,
     onBrightness: (Int, Boolean) -> Unit,
     onAnimation: (Int) -> Unit,
     onDigits: () -> Unit,
-    onShowIp: () -> Unit,
+    onOpen: (Page) -> Unit,
     onDisconnect: () -> Unit,
 ) {
     Scaffold(
@@ -282,6 +304,7 @@ fun DashboardScreen(
                 big = status?.time?.takeIf { it.isNotEmpty() } ?: "--:--",
                 small = status?.ampm ?: "",
                 caption = when {
+                    reconnecting -> "Reconnecting..."
                     status == null -> "Reading the clock..."
                     !status.synced -> "Waiting for internet time"
                     else -> status.date
@@ -293,7 +316,16 @@ fun DashboardScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.WifiOff, null, tint = LedRed)
                         Spacer(Modifier.width(10.dp))
-                        Text("This clock isn't on WiFi yet. WiFi setup from the app is coming in the next update; for now use the clock's hotspot.")
+                        Text("This clock isn't on WiFi yet.", Modifier.weight(1f))
+                        Button(onClick = { onOpen(Page.Wifi) }) { Text("Set up") }
+                    }
+                }
+            }
+            if (status?.newer == true) {
+                SectionCard("Update") {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Version ${status.latest} is available.", Modifier.weight(1f))
+                        OutlinedButton(onClick = { onOpen(Page.Updates) }) { Text("View") }
                     }
                 }
             }
@@ -314,20 +346,36 @@ fun DashboardScreen(
                 )
             }
 
-            SectionCard("Animations") {
+            SectionCard("Play now") {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilledTonalButton(onClick = onDigits) { Text("Digit change") }
                     effects.forEach { (n, name) -> FilledTonalButton(onClick = { onAnimation(n) }) { Text(name) } }
                 }
             }
 
-            SectionCard("Clock") {
-                InfoRow("Firmware", "v${info.firmware} · ${info.board}")
-                InfoRow("Network", status?.ssid?.takeIf { it.isNotEmpty() } ?: "-", icon = { Icon(Icons.Default.Wifi, null, Modifier.size(16.dp), tint = Muted) })
-                InfoRow("IP address", status?.ip ?: "-")
-                if (status?.newer == true) InfoRow("Update", "v${status.latest} available", highlight = true)
-                Spacer(Modifier.height(10.dp))
-                OutlinedButton(onClick = onShowIp) { Text("Show IP on the clock") }
+            SectionCard("Settings") {
+                NavRow(Icons.Default.Wifi, "WiFi", status?.ssid?.takeIf { it.isNotEmpty() } ?: "Not connected") { onOpen(Page.Wifi) }
+                RowDivider()
+                NavRow(Icons.Default.Schedule, "Clock & time", "Format, time zone, colon, date") { onOpen(Page.Clock) }
+                RowDivider()
+                NavRow(Icons.Default.LightMode, "Brightness & night", "Night mode, light sensor") { onOpen(Page.Brightness) }
+                RowDivider()
+                NavRow(Icons.Default.GridOn, "Display", "Modules, type, orientation") { onOpen(Page.Display) }
+                RowDivider()
+                NavRow(Icons.Default.AutoAwesome, "Animations", "Digit change, hourly, power-on") { onOpen(Page.Animations) }
+                RowDivider()
+                NavRow(Icons.Default.Message, "Message", "Your own scrolling text") { onOpen(Page.Message) }
+                RowDivider()
+                NavRow(Icons.Default.Cake, "Special days", "Birthdays and anniversaries") { onOpen(Page.SpecialDays) }
+                RowDivider()
+                NavRow(Icons.Default.SystemUpdate, "Updates", status?.let { "v${it.version}" + if (it.newer) " · update available" else "" } ?: "") { onOpen(Page.Updates) }
+                RowDivider()
+                NavRow(Icons.Default.Security, "Security", "App lock, web password, paired phones") { onOpen(Page.Security) }
+                RowDivider()
+                NavRow(Icons.Default.Settings, "System", "Restart, factory reset, info") { onOpen(Page.System) }
+            }
+            SectionCard("Help") {
+                NavRow(Icons.Default.MenuBook, "Setup guide", "Wiring, first setup, video") { onOpen(Page.Guide) }
             }
             Spacer(Modifier.height(24.dp))
         }
@@ -335,7 +383,7 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun InfoRow(label: String, value: String, highlight: Boolean = false, icon: (@Composable () -> Unit)? = null) {
+fun InfoRow(label: String, value: String, highlight: Boolean = false, icon: (@Composable () -> Unit)? = null) {
     Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
         icon?.let { it(); Spacer(Modifier.width(6.dp)) }
         Text(label, color = Muted)

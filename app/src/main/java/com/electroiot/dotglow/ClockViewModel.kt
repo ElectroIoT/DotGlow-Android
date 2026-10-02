@@ -18,15 +18,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 
 /** Live state of the clock, from the "status" request. */
@@ -44,8 +49,37 @@ data class ClockStatus(
     val mode: String,         // "clock", "setup" (no WiFi yet) or "safe"
     val latest: String,
     val newer: Boolean,
+    val otaMessage: String,
+    val otaBusy: Boolean,
+    val light: Int,           // light sensor 0..100, -1 = off
     val brightnessNow: Int,
 )
+
+/** All settings, from the "config" request; keys match the clock's `set` keys. */
+data class ClockConfig(private val o: JsonObject) {
+    fun int(key: String, default: Int = 0) = (o[key] as? JsonPrimitive)?.intOrNull ?: default
+    fun flag(key: String) = int(key) != 0 || (o[key] as? JsonPrimitive)?.booleanOrNull == true
+    fun str(key: String) = (o[key] as? JsonPrimitive)?.content ?: ""
+    val events: List<SpecialDay>
+        get() = (o["events"] as? JsonArray)?.map { e ->
+            val j = e.jsonObject
+            fun i(k: String) = (j[k] as? JsonPrimitive)?.intOrNull ?: 0
+            SpecialDay(i("i"), i("m"), i("d"), i("a"), (j["t"] as? JsonPrimitive)?.content ?: "")
+        }?.sortedWith(compareBy({ it.month }, { it.day })) ?: emptyList()
+
+    /** A copy with one setting changed (shown at once, before the clock confirms). */
+    fun with(key: String, value: Any): ClockConfig {
+        val v: JsonElement = when (value) {
+            is Boolean -> JsonPrimitive(if (value) 1 else 0)
+            is Number -> JsonPrimitive(value)
+            else -> JsonPrimitive(value.toString())
+        }
+        return ClockConfig(JsonObject(o + (key to v)))
+    }
+}
+
+data class SpecialDay(val index: Int, val month: Int, val day: Int, val anim: Int, val text: String)
+data class WifiNetwork(val ssid: String, val rssi: Int, val locked: Boolean)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ClockViewModel(app: Application) : AndroidViewModel(app) {
@@ -82,16 +116,22 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- connection ------------------------------------------------------------------
     private val connection = MutableStateFlow<ClockConnection?>(null)
+    private var lastClock: FoundClock? = null
+    private var reconnectJob: Job? = null
 
     val connState: StateFlow<ConnState?> = connection
         .flatMapLatest { it?.state ?: flowOf(null) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    /** True while the app is waiting for a restarting clock to come back. */
+    private val _reconnecting = MutableStateFlow(false)
+    val reconnecting: StateFlow<Boolean> = _reconnecting.asStateFlow()
+
     private val _status = MutableStateFlow<ClockStatus?>(null)
     val status: StateFlow<ClockStatus?> = _status.asStateFlow()
 
-    private val _brightness = MutableStateFlow(4)
-    val brightness: StateFlow<Int> = _brightness.asStateFlow()
+    private val _config = MutableStateFlow<ClockConfig?>(null)
+    val config: StateFlow<ClockConfig?> = _config.asStateFlow()
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val messages = _messages.asSharedFlow()
@@ -99,25 +139,80 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
 
     private var pollJob: Job? = null
 
+    /**
+     * Connects, retrying a couple of times: right after the app was closed the clock may
+     * still be dropping the old link. A failed pairing (wrong PIN) is not retried.
+     */
     fun connect(clock: FoundClock) {
         stopScan()
         disconnect()
+        lastClock = clock
+        viewModelScope.launch {
+            repeat(3) { attempt ->
+                val c = open(clock)
+                val end = c.state.first { it is ConnState.Ready || it is ConnState.Failed }
+                if (end is ConnState.Ready || connection.value !== c) return@launch
+                if ((end as ConnState.Failed).reason.contains("pairing", ignoreCase = true)) return@launch
+                if (attempt < 2) delay(1500)
+            }
+        }
+    }
+
+    fun retry() {
+        lastClock?.let(::connect)
+    }
+
+    private fun open(clock: FoundClock): ClockConnection {
         val c = ClockConnection(getApplication(), clock.device)
         connection.value = c
         viewModelScope.launch {
             c.connect()
             if (c.state.value is ConnState.Ready) {
+                _reconnecting.value = false
                 loadConfig()
                 startPolling()
+                watchForDrop(c)
             }
+        }
+        return c
+    }
+
+    /** If a ready connection drops (clock restarted, out of range), try to get it back for a minute. */
+    private fun watchForDrop(c: ClockConnection) {
+        viewModelScope.launch {
+            c.state.first { it is ConnState.Disconnected }
+            if (connection.value !== c) return@launch   // the user disconnected on purpose
+            reconnect()
+        }
+    }
+
+    private fun reconnect() {
+        val clock = lastClock ?: return
+        reconnectJob?.cancel()
+        _reconnecting.value = true
+        pollJob?.cancel()
+        reconnectJob = viewModelScope.launch {
+            delay(4000)   // give a restarting clock time to boot
+            repeat(10) {
+                val c = open(clock)
+                val ready = withTimeoutOrNull(20_000) { c.state.first { it is ConnState.Ready || it is ConnState.Failed } }
+                if (ready is ConnState.Ready) return@launch
+                delay(3000)
+            }
+            _reconnecting.value = false
+            message("Lost the clock. Make sure it is powered on and close by.")
         }
     }
 
     fun disconnect() {
+        reconnectJob?.cancel()
+        _reconnecting.value = false
         pollJob?.cancel()
-        connection.value?.disconnect()
+        val c = connection.value
         connection.value = null
+        c?.disconnect()
         _status.value = null
+        _config.value = null
     }
 
     private fun startPolling() {
@@ -132,36 +227,122 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private suspend fun loadConfig() {
-        runCatching { request("config") }.getOrNull()?.takeIf { it.ok }?.let { r ->
-            (r.body.jsonObject["br"] as? JsonPrimitive)?.intOrNull?.let { _brightness.value = it }
-        }
-    }
-
-    // ---- commands ------------------------------------------------------------------------
-    private suspend fun request(op: String, args: Map<String, Any?> = emptyMap()): RpcResult {
-        val c = connection.value ?: throw IllegalStateException("Not connected")
-        return c.call(op, args)
-    }
-
-    /** Fire-and-report: runs a command and shows its error, if any. */
-    private fun command(op: String, args: Map<String, Any?> = emptyMap(), done: String? = null) {
+    fun loadConfig() {
         viewModelScope.launch {
-            runCatching { request(op, args) }
-                .onSuccess { r -> if (!r.ok) message(r.message) else if (done != null) message(done) }
-                .onFailure { e -> message(e.message ?: "Request failed") }
+            runCatching { request("config") }.getOrNull()?.takeIf { it.ok }?.let { r ->
+                _config.value = ClockConfig(r.body.jsonObject)
+            }
         }
     }
 
-    /** live = while dragging (no flash write); save = on release. */
-    fun setBrightness(value: Int, save: Boolean) {
-        _brightness.value = value
-        command("set", if (save) mapOf("k" to "br", "v" to value) else mapOf("k" to "br", "v" to value, "live" to 1))
+    // ---- requests ------------------------------------------------------------------------
+    private suspend fun request(op: String, args: Map<String, Any?> = emptyMap(), timeoutMs: Long = 15_000): RpcResult {
+        val c = connection.value ?: throw IllegalStateException("Not connected")
+        return c.call(op, args, timeoutMs)
     }
 
+    /** Runs a command, shows its error (or [done]) and returns whether it worked. */
+    private suspend fun run(op: String, args: Map<String, Any?> = emptyMap(), done: String? = null, timeoutMs: Long = 15_000): RpcResult? =
+        runCatching { request(op, args, timeoutMs) }
+            .onSuccess { r -> if (!r.ok) message(r.message) else if (done != null) message(done) }
+            .onFailure { e -> message(e.message ?: "Request failed") }
+            .getOrNull()?.takeIf { it.ok }
+
+    private fun command(op: String, args: Map<String, Any?> = emptyMap(), done: String? = null) {
+        viewModelScope.launch { run(op, args, done) }
+    }
+
+    // ---- settings ----------------------------------------------------------------------------
+
+    /** Changes one setting. live = while a slider is moving (the clock doesn't save it yet). */
+    fun set(key: String, value: Any, live: Boolean = false) {
+        _config.value = _config.value?.with(key, value)
+        val wire = if (value is Boolean) (if (value) 1 else 0) else value   // the clock expects 1 / 0
+        val args = mutableMapOf<String, Any?>("k" to key, "v" to wire)
+        if (live) args["live"] = 1
+        viewModelScope.launch {
+            val r = run("set", args)
+            if (r != null && r.message.startsWith("Restarting")) message("The clock is restarting to apply this")
+        }
+    }
+
+    fun setBrightness(value: Int, save: Boolean) = set("br", value, live = !save)
+
+    // ---- WiFi --------------------------------------------------------------------------------
+    private val _networks = MutableStateFlow<List<WifiNetwork>?>(null)
+    val networks: StateFlow<List<WifiNetwork>?> = _networks.asStateFlow()
+    private val _wifiScanning = MutableStateFlow(false)
+    val wifiScanning: StateFlow<Boolean> = _wifiScanning.asStateFlow()
+
+    fun scanWifi() {
+        viewModelScope.launch {
+            _wifiScanning.value = true
+            val r = run("scan", timeoutMs = 25_000)
+            _wifiScanning.value = false
+            _networks.value = r?.body?.jsonArray?.map { e ->
+                val o = e.jsonObject
+                WifiNetwork(
+                    (o["s"] as? JsonPrimitive)?.content ?: "",
+                    (o["r"] as? JsonPrimitive)?.intOrNull ?: -100,
+                    (o["l"] as? JsonPrimitive)?.intOrNull == 1,
+                )
+            }?.sortedByDescending { it.rssi } ?: emptyList()
+        }
+    }
+
+    fun joinWifi(ssid: String, password: String) {
+        viewModelScope.launch {
+            if (run("wifi", mapOf("ssid" to ssid, "pass" to password)) != null)
+                message("Saved. The clock is restarting and joining $ssid...")
+        }
+    }
+
+    // ---- messages, special days ---------------------------------------------------------------
+    fun saveMessage(text: String, every: Int, showNow: Boolean) {
+        viewModelScope.launch {
+            if (run("message", mapOf("t" to text, "every" to every, "show" to if (showNow) 1 else 0),
+                    if (showNow) "Watch the clock" else "Saved") != null) loadConfig()
+        }
+    }
+
+    fun addSpecialDay(month: Int, day: Int, anim: Int, text: String) {
+        viewModelScope.launch {
+            if (run("event/add", mapOf("m" to month, "d" to day, "a" to anim, "t" to text), "Added") != null) loadConfig()
+        }
+    }
+
+    fun deleteSpecialDay(index: Int) {
+        viewModelScope.launch { if (run("event/del", mapOf("i" to index), "Deleted") != null) loadConfig() }
+    }
+
+    fun showSpecialDay(index: Int) = command("event/show", mapOf("i" to index), "Watch the clock")
+
+    // ---- password, phones -------------------------------------------------------------------
+    fun setPassword(current: String, new: String, onDone: () -> Unit) {
+        viewModelScope.launch {
+            val r = run("password", mapOf("cur" to current, "new" to new), if (new.isEmpty()) "Password removed" else "Password saved")
+            if (r != null) { loadConfig(); onDone() }
+        }
+    }
+
+    fun forgetPhones() {
+        viewModelScope.launch {
+            run("phones/forget", done = "All phones removed. Pair again to connect.")
+            disconnect()
+            startScan()
+        }
+    }
+
+    // ---- actions ---------------------------------------------------------------------------------
     fun playAnimation(n: Int) = command("anim", mapOf("n" to n), "Watch the clock")
     fun previewDigits() = command("digits", done = "Watch the clock")
+    fun showModuleNumbers() = command("modules", done = "Watch the clock")
     fun showIp() = command("show", done = "Watch the clock")
+    fun syncTime() = command("sync", done = "Re-syncing the time")
+    fun checkUpdate() = command("ota/check", done = "Checking for updates...")
+    fun installUpdate() = command("ota/install", done = "Installing - the clock restarts when it's done")
+    fun restartClock() = command("restart", done = "Restarting...")
+    fun factoryReset() = command("factory", done = "Resetting the clock...")
 
     override fun onCleared() {
         disconnect()
@@ -176,7 +357,8 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
             time = s("time"), ampm = s("ampm"), date = s("date"), synced = b("synced"),
             ssid = s("ssid"), ip = s("ip"), rssi = i("rssi"), uptimeS = s("up").toLongOrNull() ?: 0,
             version = s("version"), board = s("board"), mode = s("mode"),
-            latest = s("latest"), newer = b("newer"), brightnessNow = i("brNow"),
+            latest = s("latest"), newer = b("newer"), otaMessage = s("otaMsg"), otaBusy = b("otaBusy"),
+            light = (o["light"] as? JsonPrimitive)?.intOrNull ?: -1, brightnessNow = i("brNow"),
         )
     }
 }
