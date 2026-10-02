@@ -46,6 +46,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.electroiot.dotglow.BtUpdate
+import com.electroiot.dotglow.ui.matrix.LedMatrix
+import com.electroiot.dotglow.ui.matrix.ScrollScene
+import com.electroiot.dotglow.ui.matrix.TextScene
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import com.electroiot.dotglow.ClockViewModel
 import com.electroiot.dotglow.ble.ConnState
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -120,6 +133,7 @@ fun ClockSettingsScreen(vm: ClockViewModel, snackbar: SnackbarHostState, onBack:
     val cfg by vm.config.collectAsStateWithLifecycle()
     SubPage("Clock & time", snackbar, onBack) {
         val c = cfg ?: return@SubPage
+        MatrixHero(rememberPhoneClock(faceStyle(c)), "Preview: changes show here at once", c.int("modules", 4))
         SectionCard("Time") {
             ChoiceRow("Time format", c.int("fmt24"), listOf(0 to "12 hour", 1 to "24 hour")) { vm.set("fmt24", it) }
             ChoiceRow("Time zone", c.str("tz"), TimeZones.let { z -> if (z.any { it.first == c.str("tz") }) z else z + (c.str("tz") to c.str("tz")) }) { vm.set("tz", it) }
@@ -178,6 +192,16 @@ fun DisplayScreen(vm: ClockViewModel, snackbar: SnackbarHostState, onBack: () ->
     var pending by remember { mutableStateOf<Pair<String, Int>?>(null) }
     SubPage("Display", snackbar, onBack) {
         val c = cfg ?: return@SubPage
+        val modules = pending?.takeIf { it.first == "modules" }?.second ?: c.int("modules", 4)
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF050506))
+                .border(1.dp, PanelLine, RoundedCornerShape(20.dp)).padding(14.dp),
+        ) {
+            LedMatrix(rememberPhoneClock(faceStyle(c)), modules = modules.coerceAtMost(8),
+                flipH = c.flag("flipH"), flipV = c.flag("flipV"))
+            Text("$modules modules = 8 x ${modules * 8} LEDs" + if (modules > 8) " (first 8 shown)" else "",
+                color = Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+        }
         SectionCard("Modules") {
             ChoiceRow("Modules in the chain", c.int("modules", 4), (4..16).map { it to "$it  (8x${it * 8})" },
                 "The clock restarts to apply this") { pending = "modules" to it }
@@ -203,21 +227,25 @@ fun DisplayScreen(vm: ClockViewModel, snackbar: SnackbarHostState, onBack: () ->
 @Composable
 fun AnimationsScreen(vm: ClockViewModel, snackbar: SnackbarHostState, onBack: () -> Unit) {
     val cfg by vm.config.collectAsStateWithLifecycle()
+    var effectFor by rememberSaveable { mutableIntStateOf(0) }   // 0 = every hour, 1 = at power-on
     SubPage("Animations", snackbar, onBack) {
         val c = cfg ?: return@SubPage
         SectionCard("Digit change") {
-            ChoiceRow("Style", c.int("roll"), DigitStyles, "Plays on the clock when you pick one") { vm.set("roll", it) }
+            Text("How the digits change every minute. Tap one: the clock shows it too.", color = Muted, fontSize = 13.sp)
+            Spacer(Modifier.height(10.dp))
+            DigitStylePicker(c.int("roll"), c.flag("fmt24")) { vm.set("roll", it) }
         }
         SectionCard("Effects") {
-            ChoiceRow("Every hour", c.int("hourlyAnim"), AnimationNames) { vm.set("hourlyAnim", it) }
-            ChoiceRow("At power-on", c.int("bootAnim"), AnimationNames) { vm.set("bootAnim", it) }
-            Spacer(Modifier.height(8.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledTonalButton(onClick = vm::previewDigits) { Text("Digit change") }
-                AnimationNames.filter { it.first in 1..5 }.forEach { (n, name) ->
-                    FilledTonalButton(onClick = { vm.playAnimation(n) }) { Text(name) }
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                listOf("Every hour", "At power-on").forEachIndexed { i, label ->
+                    SegmentedButton(effectFor == i, { effectFor = i }, SegmentedButtonDefaults.itemShape(i, 2)) { Text(label) }
                 }
             }
+            Spacer(Modifier.height(10.dp))
+            val key = if (effectFor == 0) "hourlyAnim" else "bootAnim"
+            AnimationPicker(c.int(key), onPlay = vm::playAnimation) { vm.set(key, it) }
+            Spacer(Modifier.height(6.dp))
+            Text("▶ plays an effect on the clock right now.", color = Muted, fontSize = 13.sp)
         }
     }
 }
@@ -233,6 +261,10 @@ fun MessageScreen(vm: ClockViewModel, snackbar: SnackbarHostState, onBack: () ->
         val c = cfg ?: return@SubPage
         var text by remember(c.str("msg")) { mutableStateOf(c.str("msg")) }
         var every by remember(c.int("msgEvery")) { mutableIntStateOf(c.int("msgEvery")) }
+        MatrixHero(
+            remember(text) { if (text.isBlank()) TextScene("...") else ScrollScene(text, 32) },
+            "Preview", c.int("modules", 4),
+        )
         SectionCard("Scrolling message") {
             OutlinedTextField(text, { if (it.length <= 64) text = it }, Modifier.fillMaxWidth(), label = { Text("Message") },
                 supportingText = { Text("${text.length}/64") })

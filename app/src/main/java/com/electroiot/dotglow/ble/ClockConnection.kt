@@ -58,10 +58,10 @@ data class ClockInfo(
  * operation here goes through [gattOp]: start it, then suspend until its callback arrives.
  */
 @SuppressLint("MissingPermission")   // created only after the Bluetooth permissions are granted
-class ClockConnection(private val context: Context, private val device: BluetoothDevice) {
+class ClockConnection(private val context: Context, private val device: BluetoothDevice) : ClockLink {
 
     private val _state = MutableStateFlow<ConnState>(ConnState.Connecting)
-    val state: StateFlow<ConnState> = _state.asStateFlow()
+    override val state: StateFlow<ConnState> = _state.asStateFlow()
 
     private var gatt: BluetoothGatt? = null
     private var mtu = 23
@@ -139,7 +139,7 @@ class ClockConnection(private val context: Context, private val device: Bluetoot
     // ---- connect / pair ------------------------------------------------------------
 
     /** [timeoutMs]: for the link itself (normally < 1 s; Android sometimes hangs right after the app was killed). */
-    suspend fun connect(timeoutMs: Long = 15_000) {
+    override suspend fun connect(timeoutMs: Long) {
         try {
             _state.value = ConnState.Connecting
             connected = CompletableDeferred()
@@ -234,7 +234,7 @@ class ClockConnection(private val context: Context, private val device: Bluetoot
      * Ends the link and releases Android's GATT client right away: a connect that never got
      * through gets no callback, and every unclosed client counts against Android's limit.
      */
-    fun disconnect() {
+    override fun disconnect() {
         val g = gatt ?: return
         gatt = null
         runCatching { g.disconnect() }
@@ -248,7 +248,7 @@ class ClockConnection(private val context: Context, private val device: Bluetoot
     // ---- requests --------------------------------------------------------------------
 
     /** Sends one request and waits for its response. */
-    suspend fun call(op: String, args: Map<String, Any?> = emptyMap(), timeoutMs: Long = 15_000): RpcResult {
+    override suspend fun call(op: String, args: Map<String, Any?>, timeoutMs: Long): RpcResult {
         val service = gatt?.getService(DotGlowProtocol.SERVICE) ?: throw RpcException("Not connected")
         val id = nextId.getAndIncrement()
         val req = buildJsonObject {
@@ -277,7 +277,7 @@ class ClockConnection(private val context: Context, private val device: Bluetoot
      * response when the clock allows it (~3x faster; Android's callback per packet still paces
      * us, and the clock checks size + MD5 at "ota/end"), with response otherwise.
      */
-    suspend fun sendFirmware(data: ByteArray, chunk: Int, onProgress: (Int) -> Unit) {
+    override suspend fun sendFirmware(data: ByteArray, chunk: Int, onProgress: (Int) -> Unit) {
         val g = gatt ?: throw RpcException("Not connected")
         val ota = g.getService(DotGlowProtocol.SERVICE)?.getCharacteristic(DotGlowProtocol.OTA)
             ?: throw RpcException("This clock's firmware is too old for Bluetooth updates")

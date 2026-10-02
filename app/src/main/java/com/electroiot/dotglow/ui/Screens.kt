@@ -29,6 +29,8 @@ import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Usb
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -75,6 +77,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.electroiot.dotglow.ClockStatus
+import com.electroiot.dotglow.ui.matrix.ClockScene
+import com.electroiot.dotglow.ui.matrix.FaceStyle
+import com.electroiot.dotglow.ui.matrix.ScrollScene
+import com.electroiot.dotglow.ui.matrix.SequenceScene
+import com.electroiot.dotglow.ui.matrix.Timed
+import com.electroiot.dotglow.ui.matrix.animationScene
+import com.electroiot.dotglow.ui.matrix.digitStyleDemo
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
 import com.electroiot.dotglow.ble.ClockInfo
 import com.electroiot.dotglow.ble.ConnState
 import com.electroiot.dotglow.ble.FoundClock
@@ -140,19 +154,26 @@ fun ScanScreen(
     onPick: (FoundClock) -> Unit,
     onGuide: () -> Unit,
     onFlash: () -> Unit,
+    onDemo: () -> Unit,
+    onAbout: () -> Unit,
 ) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
                 title = { Text("DotGlow", fontWeight = FontWeight.Bold) },
-                actions = { if (hasPermission && bluetoothOn) IconButton(onClick = onRescan) { Icon(Icons.Default.Refresh, "Scan again") } },
+                actions = {
+                    if (hasPermission && bluetoothOn) IconButton(onClick = onRescan) { Icon(Icons.Default.Refresh, "Scan again") }
+                    IconButton(onClick = onAbout) { Icon(Icons.Default.Info, "About") }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
     ) { pad ->
-        Column(Modifier.padding(pad).padding(horizontal = 16.dp).fillMaxSize()) {
-            LedHero("12:45", "PM", "Find your clock")
+        Column(Modifier.padding(pad).fillMaxSize().wrapContentWidth().widthIn(max = 640.dp).padding(horizontal = 16.dp)) {
+            val clock = rememberPhoneClock()
+            val hero = remember { SequenceScene(ScrollScene("DOTGLOW * MANORANJAN.DEV", 32), Timed(clock, 9_000)) }
+            MatrixHero(hero, "Find your clock")
             when {
                 !hasPermission -> SectionCard("Bluetooth permission") {
                     Text("DotGlow uses Bluetooth to find and set up clocks near you. It never uses your location.")
@@ -188,6 +209,8 @@ fun ScanScreen(
                 NavRow(Icons.Default.MenuBook, "Setup guide", "Parts, wiring, first setup, video") { onGuide() }
                 RowDivider()
                 NavRow(Icons.Default.Usb, "Install firmware", "New ESP32, ESP32-S3 or ESP8266 (NodeMCU) board, over USB") { onFlash() }
+                RowDivider()
+                NavRow(Icons.Default.PlayCircle, "Try the demo clock", "See every screen without a clock") { onDemo() }
             }
         }
     }
@@ -275,7 +298,7 @@ fun ConnectingScreen(state: ConnState?, onRetry: () -> Unit, onCancel: () -> Uni
 // =================================================================================
 
 /** Pages reachable from the home screen. */
-enum class Page { Home, Wifi, Clock, Brightness, Display, Animations, Message, SpecialDays, Updates, Security, System, Guide, Flash }
+enum class Page { Home, Wifi, Clock, Brightness, Display, Animations, Message, SpecialDays, Updates, Security, System, Guide, Flash, AboutApp, AboutDev }
 
 private val effects = listOf(1 to "Sparkle", 2 to "Wipe", 3 to "Rain", 4 to "Boxes", 5 to "Pac-Man")
 
@@ -285,6 +308,8 @@ fun DashboardScreen(
     info: ClockInfo,
     status: ClockStatus?,
     brightness: Int,
+    face: FaceStyle,
+    modules: Int,
     reconnecting: Boolean,
     snackbar: SnackbarHostState,
     onBrightness: (Int, Boolean) -> Unit,
@@ -303,10 +328,23 @@ fun DashboardScreen(
             )
         },
     ) { pad ->
-        Column(Modifier.padding(pad).padding(horizontal = 16.dp).verticalScroll(rememberScrollState())) {
-            LedHero(
-                big = status?.time?.takeIf { it.isNotEmpty() } ?: "--:--",
-                small = status?.ampm ?: "",
+        Column(Modifier.padding(pad).fillMaxSize().wrapContentWidth().widthIn(max = 640.dp).padding(horizontal = 16.dp).verticalScroll(rememberScrollState())) {
+            // The clock's own time (polled every 2 s), run smoothly on the phone's clock in between.
+            val offset = remember { longArrayOf(Long.MIN_VALUE) }
+            LaunchedEffect(status?.time, status?.ampm) {
+                val st = status ?: return@LaunchedEffect
+                val clockMs = clockMsOfDay(st.time, st.ampm) ?: return@LaunchedEffect
+                var d = clockMs - phoneMsOfDay()
+                if (d > 43_200_000) d -= 86_400_000 else if (d < -43_200_000) d += 86_400_000
+                if (offset[0] == Long.MIN_VALUE || kotlin.math.abs(d - offset[0]) > 1500) offset[0] = d
+            }
+            val faceNow by rememberUpdatedState(face)
+            val live = remember { ClockScene({ faceNow }) { phoneMsOfDay() + offset[0].coerceAtLeast(-86_400_000) } }
+            val waiting = remember { ScrollScene("WAITING FOR TIME", 32) }
+            MatrixHero(
+                scene = if (status?.synced == true) live else waiting,
+                modules = modules,
+                label = if (reconnecting) "" else "Live",
                 caption = when {
                     reconnecting -> "Reconnecting..."
                     status == null -> "Reading the clock..."
@@ -351,9 +389,15 @@ fun DashboardScreen(
             }
 
             SectionCard("Play now") {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilledTonalButton(onClick = onDigits) { Text("Digit change") }
-                    effects.forEach { (n, name) -> FilledTonalButton(onClick = { onAnimation(n) }) { Text(name) } }
+                Text("Tap to play it on the clock", color = Muted, fontSize = 13.sp)
+                Spacer(Modifier.height(8.dp))
+                val digitDemo = remember(face.roll, face.fmt24) { digitStyleDemo(face.roll, face.fmt24) }
+                val scenes = remember { effects.map { (n, _) -> animationScene(n, 32) } }
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    item { PreviewCard("Digit change", digitDemo, false, Modifier.width(150.dp)) { onDigits() } }
+                    items(effects.size) { i ->
+                        PreviewCard(effects[i].second, scenes[i], false, Modifier.width(150.dp)) { onAnimation(effects[i].first) }
+                    }
                 }
             }
 
@@ -382,10 +426,22 @@ fun DashboardScreen(
                 NavRow(Icons.Default.MenuBook, "Setup guide", "Wiring, first setup, video") { onOpen(Page.Guide) }
                 RowDivider()
                 NavRow(Icons.Default.Usb, "Install firmware on a new board", "ESP32, ESP32-S3, ESP8266 (NodeMCU) over USB") { onOpen(Page.Flash) }
+                RowDivider()
+                NavRow(Icons.Default.Info, "About DotGlow", "Version, links, developer") { onOpen(Page.AboutApp) }
             }
             Spacer(Modifier.height(24.dp))
         }
     }
+}
+
+/** "07:05:09" + "PM" (12-hour) or "19:05:09" -> ms since midnight. */
+fun clockMsOfDay(time: String, ampm: String): Long? {
+    val p = time.split(':').mapNotNull { it.trim().toIntOrNull() }
+    if (p.size < 2) return null
+    var h = p[0]
+    if (ampm.equals("PM", true) && h < 12) h += 12
+    if (ampm.equals("AM", true) && h == 12) h = 0
+    return ((h * 60L + p[1]) * 60 + p.getOrElse(2) { 0 }) * 1000
 }
 
 @Composable

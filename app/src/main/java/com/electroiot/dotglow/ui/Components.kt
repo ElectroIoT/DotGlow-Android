@@ -2,6 +2,8 @@ package com.electroiot.dotglow.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -61,9 +63,12 @@ fun SubPage(title: String, snackbar: SnackbarHostState, onBack: () -> Unit, cont
             )
         },
     ) { pad ->
-        Column(Modifier.padding(pad).padding(horizontal = 16.dp).fillMaxSize().verticalScroll(rememberScrollState())) {
-            content()
-            Spacer(Modifier.height(32.dp))
+        // centred, at most 640 dp wide: comfortable on tablets and in landscape
+        Box(Modifier.padding(pad).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            Column(Modifier.widthIn(max = 640.dp).padding(horizontal = 16.dp).fillMaxSize().verticalScroll(rememberScrollState())) {
+                content()
+                Spacer(Modifier.height(32.dp))
+            }
         }
     }
 }

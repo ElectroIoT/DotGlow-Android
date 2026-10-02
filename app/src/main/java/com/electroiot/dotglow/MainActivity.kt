@@ -24,6 +24,16 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.electroiot.dotglow.ble.ConnState
 import com.electroiot.dotglow.ui.AnimationsScreen
+import com.electroiot.dotglow.ui.AboutAppScreen
+import com.electroiot.dotglow.ui.AboutDeveloperScreen
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import com.electroiot.dotglow.ui.faceStyle
 import com.electroiot.dotglow.ui.BrightnessScreen
 import com.electroiot.dotglow.ui.ClockSettingsScreen
 import com.electroiot.dotglow.ui.ConnectingScreen
@@ -45,6 +55,13 @@ import com.electroiot.dotglow.ui.SpecialDaysScreen
 import com.electroiot.dotglow.ui.SystemScreen
 import com.electroiot.dotglow.ui.UpdatesScreen
 import com.electroiot.dotglow.ui.WifiScreen
+
+/** How deep a screen is, for the direction of the slide animation. */
+private fun depth(screen: String) = when (screen) {
+    "Scan", "Connecting", "Home" -> 0
+    "AboutDev" -> 2
+    else -> 1
+}
 
 class MainActivity : FragmentActivity() {
     private val vm: ClockViewModel by viewModels()
@@ -113,28 +130,41 @@ class MainActivity : FragmentActivity() {
         if (settingPin) SetPinDialog(onSet = { lock.setPin(it); lockOn = true; settingPin = false }, onDismiss = { settingPin = false })
 
         var guideBoard by rememberSaveable { mutableIntStateOf(0) }
-        val back = { page = Page.Home }
+        val back = { page = if (page == Page.AboutDev) Page.AboutApp else Page.Home }
         BackHandler(enabled = page != Page.Home) {
             if (page == Page.Flash) flashVm.reset()
             back()
         }
 
-        // The setup guide and the USB installer work without a clock.
-        if (page == Page.Guide) {
-            GuideScreen(snackbar, initialBoard = guideBoard, onFlash = { page = Page.Flash }, onBack = { guideBoard = 0; back() })
-            return
-        }
-        if (page == Page.Flash) {
-            FlashScreen(flashVm, snackbar, onBack = back, onGuide8266 = { guideBoard = GUIDE_BOARD_ESP8266; page = Page.Guide })
-            return
-        }
-
         val c = conn
         val ready = c is ConnState.Ready || reconnecting
-        when {
-            !ready && (c == null || c == ConnState.Disconnected) -> {
-                page = Page.Home
-                ScanScreen(
+        val atScan = !ready && (c == null || c == ConnState.Disconnected)
+        // Pages that work without a clock: the guide, the USB installer, About.
+        val standalone = page in setOf(Page.Guide, Page.Flash, Page.AboutApp, Page.AboutDev)
+        LaunchedEffect(atScan) { if (atScan && !standalone) page = Page.Home }
+        val screen = when {
+            standalone -> page.name
+            atScan -> "Scan"
+            !ready -> "Connecting"
+            else -> page.name
+        }
+
+        AnimatedContent(
+            targetState = screen,
+            transitionSpec = {
+                // deeper pages slide in from the right, going back slides the other way
+                val dir = if (depth(targetState) >= depth(initialState)) 1 else -1
+                (slideInHorizontally(tween(320)) { w -> dir * w / 3 } + fadeIn(tween(320))) togetherWith
+                    (slideOutHorizontally(tween(320)) { w -> -dir * w / 4 } + fadeOut(tween(200)))
+            },
+            label = "screens",
+        ) { key ->
+            when (key) {
+                "Guide" -> GuideScreen(snackbar, initialBoard = guideBoard, onFlash = { page = Page.Flash }, onBack = { guideBoard = 0; back() })
+                "Flash" -> FlashScreen(flashVm, snackbar, onBack = back, onGuide8266 = { guideBoard = GUIDE_BOARD_ESP8266; page = Page.Guide })
+                "AboutApp" -> AboutAppScreen(snackbar, onDeveloper = { page = Page.AboutDev }, onBack = back)
+                "AboutDev" -> AboutDeveloperScreen(snackbar, onBack = back)
+                "Scan" -> ScanScreen(
                     hasPermission = granted,
                     bluetoothOn = vm.bluetoothOn,
                     scanning = scanning,
@@ -145,20 +175,20 @@ class MainActivity : FragmentActivity() {
                     onPick = vm::connect,
                     onGuide = { page = Page.Guide },
                     onFlash = { page = Page.Flash },
+                    onDemo = vm::openDemo,
+                    onAbout = { page = Page.AboutApp },
                 )
-            }
-            !ready -> ConnectingScreen(c, onRetry = vm::retry) { vm.disconnect(); vm.startScan() }
-            else -> when (page) {
-                Page.Wifi -> WifiScreen(vm, snackbar, back)
-                Page.Clock -> ClockSettingsScreen(vm, snackbar, back)
-                Page.Brightness -> BrightnessScreen(vm, snackbar, back)
-                Page.Display -> DisplayScreen(vm, snackbar, back)
-                Page.Animations -> AnimationsScreen(vm, snackbar, back)
-                Page.Message -> MessageScreen(vm, snackbar, back)
-                Page.SpecialDays -> SpecialDaysScreen(vm, snackbar, back)
-                Page.Updates -> UpdatesScreen(vm, snackbar, back)
-                Page.System -> SystemScreen(vm, snackbar, back)
-                Page.Security -> SecurityScreen(
+                "Connecting" -> ConnectingScreen(conn, onRetry = vm::retry) { vm.disconnect(); vm.startScan() }
+                Page.Wifi.name -> WifiScreen(vm, snackbar, back)
+                Page.Clock.name -> ClockSettingsScreen(vm, snackbar, back)
+                Page.Brightness.name -> BrightnessScreen(vm, snackbar, back)
+                Page.Display.name -> DisplayScreen(vm, snackbar, back)
+                Page.Animations.name -> AnimationsScreen(vm, snackbar, back)
+                Page.Message.name -> MessageScreen(vm, snackbar, back)
+                Page.SpecialDays.name -> SpecialDaysScreen(vm, snackbar, back)
+                Page.Updates.name -> UpdatesScreen(vm, snackbar, back)
+                Page.System.name -> SystemScreen(vm, snackbar, back)
+                Page.Security.name -> SecurityScreen(
                     vm, snackbar,
                     appLockOn = lockOn,
                     biometricAvailable = lock.biometricAvailable,
@@ -169,9 +199,11 @@ class MainActivity : FragmentActivity() {
                     onBack = back,
                 )
                 else -> DashboardScreen(
-                    info = (c as? ConnState.Ready)?.info ?: com.electroiot.dotglow.ble.ClockInfo("DotGlow", "", "", 0),
+                    info = (conn as? ConnState.Ready)?.info ?: com.electroiot.dotglow.ble.ClockInfo("DotGlow", "", "", 0),
                     status = status,
                     brightness = config?.int("br", 4) ?: 4,
+                    face = config?.let { faceStyle(it) } ?: com.electroiot.dotglow.ui.matrix.FaceStyle(),
+                    modules = config?.int("modules", 4) ?: 4,
                     reconnecting = reconnecting,
                     snackbar = snackbar,
                     onBrightness = vm::setBrightness,

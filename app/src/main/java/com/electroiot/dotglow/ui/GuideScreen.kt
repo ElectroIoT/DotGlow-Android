@@ -125,7 +125,8 @@ fun GuideScreen(snackbar: SnackbarHostState, initialBoard: Int = 0, onFlash: () 
     val board = boards[boardIndex]
 
     SubPage("Setup guide", snackbar, onBack) {
-        LedHero("DotGlow", caption = "Build and set up your LED matrix clock")
+        MatrixHero(remember { com.electroiot.dotglow.ui.matrix.ScrollScene("BUILD YOUR OWN DOTGLOW CLOCK", 32) },
+            "Build and set up your LED matrix clock")
 
         SectionCard("Video") {
             if (videoUrl.isNotEmpty()) {

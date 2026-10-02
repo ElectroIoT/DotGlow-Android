@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.electroiot.dotglow.ble.ClockConnection
+import com.electroiot.dotglow.ble.ClockLink
+import com.electroiot.dotglow.ble.DemoClock
 import com.electroiot.dotglow.ble.ClockScanner
 import com.electroiot.dotglow.ble.ConnState
 import com.electroiot.dotglow.ble.FoundClock
@@ -127,7 +129,7 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---- connection ------------------------------------------------------------------
-    private val connection = MutableStateFlow<ClockConnection?>(null)
+    private val connection = MutableStateFlow<ClockLink?>(null)
     private var lastClock: FoundClock? = null
     private var reconnectJob: Job? = null
 
@@ -175,8 +177,17 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
         lastClock?.let(::connect)
     }
 
-    private fun open(clock: FoundClock, timeoutMs: Long = 15_000): ClockConnection {
-        val c = ClockConnection(getApplication(), clock.device)
+    /** A pretend clock in the app: every screen works without hardware. */
+    fun openDemo() {
+        stopScan()
+        disconnect()
+        lastClock = null
+        start(DemoClock(), 0)
+    }
+
+    private fun open(clock: FoundClock, timeoutMs: Long = 15_000): ClockLink = start(ClockConnection(getApplication(), clock.device), timeoutMs)
+
+    private fun start(c: ClockLink, timeoutMs: Long): ClockLink {
         connection.value = c
         viewModelScope.launch {
             c.connect(timeoutMs)
@@ -191,7 +202,7 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** If a ready connection drops (clock restarted, out of range), try to get it back for a minute. */
-    private fun watchForDrop(c: ClockConnection) {
+    private fun watchForDrop(c: ClockLink) {
         viewModelScope.launch {
             c.state.first { it is ConnState.Disconnected }
             if (connection.value !== c) return@launch   // the user disconnected on purpose
