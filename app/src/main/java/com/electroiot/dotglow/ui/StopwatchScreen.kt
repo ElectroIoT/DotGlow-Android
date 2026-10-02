@@ -92,6 +92,7 @@ fun StopwatchScreen(vm: ClockViewModel, snackbar: SnackbarHostState, onGuide: ()
                 Text("Back to the clock")
             }
         }
+        SectionCard("How it looks on the clock") { StopwatchLooks() }
         SectionCard("Button on the clock (optional)") {
             Text("Wire a push button to the clock and use the stopwatch without the phone: tap = start / pause, " +
                 "hold = reset, hold again = back to the clock.", fontSize = 14.sp)

@@ -225,7 +225,14 @@ fun GuideScreen(snackbar: SnackbarHostState, initialBoard: Int = 0, onFlash: () 
                 (if (board.esp8266) "on the clock's settings page." else "in Settings → Brightness & night."), fontSize = 14.sp)
         }
 
-        if (!board.esp8266) SectionCard("Optional: stopwatch button") {
+        if (!board.esp8266) SectionCard("Stopwatch") {
+            Text("How it looks on the clock", fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(8.dp))
+            StopwatchLooks()
+            Spacer(Modifier.height(6.dp))
+            Text("MM:SS with tenths filling the bottom row; HH:MM after an hour (HH:MM:SS on 6+ modules). " +
+                "Start it from the app (Stopwatch) or with an optional button:", fontSize = 14.sp, color = Muted)
+            Spacer(Modifier.height(10.dp))
             GuideImage(R.drawable.guide_button, "Stopwatch button wiring")
             Spacer(Modifier.height(10.dp))
             Text("A push button from ${if (board.name == "ESP32-S3") "GPIO4" else "GPIO13"} to GND. Tap: start / pause " +

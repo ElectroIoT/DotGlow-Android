@@ -355,3 +355,20 @@ class StopwatchScene(private val ms: () -> Long, private val running: () -> Bool
         for (x in 0 until len) f[x, 7] = true
     }
 }
+
+/** Stopwatch looks for the guide: 0 = running, 1 = paused at 01:23.4 (blinking), 2 = after an hour (sped up). */
+fun stopwatchDemo(kind: Int): Scene = object : Scene {
+    private var t = 0L
+    private val inner = StopwatchScene(
+        {
+            when (kind) {
+                0 -> t
+                1 -> 83_400L
+                else -> 3_900_000L + t * 10   // 1:05:00, a minute every 6 s
+            }
+        },
+        { kind != 1 },
+    )
+    override val durationMs = 6_000L
+    override fun draw(f: Frame, tMs: Long) { t = tMs; inner.draw(f, tMs) }
+}

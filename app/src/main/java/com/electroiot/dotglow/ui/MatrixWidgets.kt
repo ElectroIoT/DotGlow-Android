@@ -44,6 +44,7 @@ import com.electroiot.dotglow.ui.matrix.Scene
 import com.electroiot.dotglow.ui.matrix.TextScene
 import com.electroiot.dotglow.ui.matrix.animationScene
 import com.electroiot.dotglow.ui.matrix.digitStyleDemo
+import com.electroiot.dotglow.ui.matrix.stopwatchDemo
 import java.time.LocalTime
 
 /** Milliseconds since midnight on the phone. */
@@ -147,6 +148,13 @@ fun AnimationPicker(selected: Int, includeOff: Boolean = true, onPlay: ((Int) ->
         PreviewCard(name, scenes.getValue(n), selected == n, mod,
             onPlay = if (onPlay != null && n in 1..5) ({ onPlay(n) }) else null) { onPick(n) }
     }
+}
+
+/** The stopwatch as the clock shows it: running, paused, after an hour. */
+@Composable
+fun StopwatchLooks() {
+    val looks = remember { listOf("Running" to stopwatchDemo(0), "Paused" to stopwatchDemo(1), "After an hour" to stopwatchDemo(2)) }
+    PreviewGrid(looks, minCell = 110) { (name, scene), mod -> PreviewCard(name, scene, false, mod) {} }
 }
 
 /** Digit-change styles, each showing the minutes ticking over. */
