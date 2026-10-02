@@ -15,8 +15,9 @@
 - Data safety: no data collected or shared. Bluetooth scan is `neverForLocation`.
 - Reviewers have no clock: point them to **Try the demo clock** on the first screen.
 - Screenshots: `docs/screenshots/` (emulator, demo clock).
-- Before publishing the source: decide whether DotGlow-ESP32 / DotGlow-Android become public (the clock's own
-  GitHub updates need a public firmware repo).
+- Publishing order (decided 2026-10-02): 1) app live on the Play Store, 2) make DotGlow-ESP32 public + GitHub
+  release v<version> (clocks update over WiFi from there), 3) make DotGlow-Android public. Licence stays MIT;
+  the README "Name and logo" note keeps the DotGlow name / icon / package for the official app.
 
 ## Remote content
 
