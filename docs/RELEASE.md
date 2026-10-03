@@ -12,7 +12,7 @@
 ## Play Store checklist
 
 - Name: **DotGlow: LED Matrix Clock**, package `com.electroiot.dotglow`.
-- Privacy policy: `https://manoranjan.dev/dotglow/privacy.html`; terms: `https://manoranjan.dev/dotglow/terms.html`.
+- Privacy policy: `https://mtpcode.com/legal/dotglow/privacy.html`; terms: `https://mtpcode.com/legal/dotglow/terms.html`.
 - Data safety: no data collected or shared. Bluetooth scan is `neverForLocation`.
 - Reviewers have no clock: point them to **Try the demo clock** on the first screen.
 - Screenshots: `docs/screenshots/` (emulator, demo clock).

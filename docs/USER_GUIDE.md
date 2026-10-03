@@ -104,4 +104,4 @@ All settings are there too. Set a password under *Security* in the app or on the
 
 No clock yet? On the first screen tap **Try the demo clock** to explore every page.
 
-Questions: electroiot.in@gmail.com · https://manoranjan.dev
+Questions: admin@mtpcode.com · https://mtpcode.com/apps/dotglow.html

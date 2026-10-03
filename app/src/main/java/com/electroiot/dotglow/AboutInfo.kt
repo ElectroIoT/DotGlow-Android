@@ -18,10 +18,10 @@ data class LinkItem(val title: String, val url: String, val subtitle: String = "
 @Serializable
 data class AboutInfo(
     val appGithub: String = "https://github.com/ElectroIoT",
-    val appWebsite: String = "https://electroiot.in",
-    val appEmail: String = "electroiot.in@gmail.com",
-    val privacy: String = "https://manoranjan.dev/dotglow/privacy.html",
-    val terms: String = "https://manoranjan.dev/dotglow/terms.html",
+    val appWebsite: String = "https://mtpcode.com/apps/dotglow.html",
+    val appEmail: String = "admin@mtpcode.com",
+    val privacy: String = "https://mtpcode.com/legal/dotglow/privacy.html",
+    val terms: String = "https://mtpcode.com/legal/dotglow/terms.html",
     val devName: String = "Manoranjan",
     val devTagline: String = "Full-stack developer, IoT engineer and PCB designer",
     val devPhoto: String = "https://github.com/manoranjan2050.png?size=256",

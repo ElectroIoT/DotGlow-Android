@@ -67,9 +67,9 @@ Made with care in India by Manoranjan (manoranjan.dev) · ElectroIoT.
 
 - **App category:** Tools (alternative: Lifestyle)
 - **Tags (pick up to 5):** Clock, Bluetooth, Smart home, Electronics / DIY, Tools
-- **Contact email:** electroiot.in@gmail.com
-- **Website:** https://electroiot.in
-- **Privacy policy:** https://manoranjan.dev/dotglow/privacy.html
+- **Contact email:** admin@mtpcode.com
+- **Website:** https://mtpcode.com/apps/dotglow.html
+- **Privacy policy:** https://mtpcode.com/legal/dotglow/privacy.html
 
 ## Graphics (in this folder)
 
@@ -84,7 +84,7 @@ Made with care in India by Manoranjan (manoranjan.dev) · ElectroIoT.
 
 | Section | Answer |
 |---|---|
-| Privacy policy | https://manoranjan.dev/dotglow/privacy.html |
+| Privacy policy | https://mtpcode.com/legal/dotglow/privacy.html |
 | Ads | No ads |
 | App access | All functionality is available without special access. Reviewers without a clock: tap **"Try the demo clock"** on the first screen |
 | Content rating | Questionnaire: Utility / productivity; no violence, no user content, no sharing, no location. Expected: Everyone / 3+ |

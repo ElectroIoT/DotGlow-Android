@@ -91,7 +91,7 @@ androidx.biometric, [usb-serial-for-android](https://github.com/mik3y/usb-serial
 | USB host (optional) | Installing firmware on a board plugged into the phone |
 | Biometric | Optional fingerprint unlock of the app lock |
 
-[Privacy policy](https://manoranjan.dev/dotglow/privacy.html) · [Terms of use](https://manoranjan.dev/dotglow/terms.html)
+[Privacy policy](https://mtpcode.com/legal/dotglow/privacy.html) · [Terms of use](https://mtpcode.com/legal/dotglow/terms.html)
 
 ## Credits
 
