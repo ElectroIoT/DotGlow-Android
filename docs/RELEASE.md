@@ -3,8 +3,9 @@
 1. Bump `versionCode` (+1) and `versionName` in `app/build.gradle.kts`. Add the version to `CHANGELOG.md`.
 2. Make sure the firmware catalog (`https://manoranjan.dev/dotglow/firmware.json`) lists the firmware this app
    expects (see DotGlow-ESP32 `docs/RELEASE.md`).
-3. Signed bundle: `./gradlew bundleRelease` with a release keystore. Keep the keystore and its passwords outside
-   the repo (backup in the owner's Dropbox, like the other apps).
+3. Signed bundle: `./gradlew bundleRelease`. The key is `keystore/release.keystore` + `keystore.properties`
+   (both gitignored, alias `dotglow`, created 2026-10-03); backup, passwords and restore steps in
+   `D:\My Project\Dropbox\Android\DotGlow\` (README.txt, KEY_DETAILS.txt).
 4. Smoke test the release build: demo clock, a real clock (pair, WiFi, a setting, Bluetooth update),
    Install firmware on a spare board.
 

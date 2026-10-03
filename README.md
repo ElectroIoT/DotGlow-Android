@@ -73,6 +73,8 @@ androidx.biometric, [usb-serial-for-android](https://github.com/mik3y/usb-serial
 
 | Doc | What's in it |
 |---|---|
+| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | User guide: wiring, setup, every screen, buttons, troubleshooting |
+| [docs/play-store/](docs/play-store/listing.md) | Play Store listing text and graphics |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Packages, BLE layer, view models, matrix renderer, USB flasher, remote JSON files |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Build, testing on phone / emulator, the PC flasher test, adb tips |
 | [docs/RELEASE.md](docs/RELEASE.md) | Versioning, signing, Play Store checklist |
