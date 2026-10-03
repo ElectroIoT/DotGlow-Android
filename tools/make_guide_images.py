@@ -198,5 +198,42 @@ for i, (k, v) in enumerate([('ESP32-S3', 'GPIO4'), ('ESP32 DevKit', 'GPIO13'), (
 d.text((80, 820), 'No resistor needed: the pin has an internal pull-up. Without a button nothing changes.', font=font(28), fill=MUT)
 im.save(os.path.join(OUT, 'guide_button.png'), optimize=True)
 
+# ---- power: a real 5 V charger, not a computer USB port ---------------------------------------
+im, d = canvas('Power: use a 5 V / 1 A (or stronger) charger', 'A computer USB port is too weak: the display stays dim or garbled and the board restarts')
+# charger
+d.rounded_rectangle((70, 260, 330, 470), 24, fill=(40, 42, 50), outline=(130, 135, 148), width=4)
+d.rounded_rectangle((110, 220, 150, 262), 6, fill=(170, 172, 180)); d.rounded_rectangle((250, 220, 290, 262), 6, fill=(170, 172, 180))
+d.text((200, 330), '5 V', font=font(52, True), fill=TXT, anchor='mm')
+d.text((200, 395), '1 A or more', font=font(30), fill=MUT, anchor='mm')
+d.text((200, 500), 'phone charger', font=font(28, True), fill=MUT, anchor='ma')
+d.line([(330, 365), (470, 365)], fill=(200, 204, 214), width=12)
+d.text((400, 330), 'USB', font=font(24, True), fill=MUT, anchor='mm')
+# board
+d.rounded_rectangle((470, 250, 820, 500), 24, fill=(16, 53, 58), outline=(31, 107, 114), width=3)
+d.text((645, 290), 'ESP32 / ESP32-S3', font=font(32, True), fill=TXT, anchor='ma')
+d.text((800, 380), '5V / VIN', font=font(28, True), fill=TXT, anchor='ra'); d.ellipse((805, 384, 823, 402), fill=(230, 200, 90))
+d.text((800, 440), 'GND', font=font(28, True), fill=TXT, anchor='ra'); d.ellipse((805, 444, 823, 462), fill=(230, 200, 90))
+# display
+matrix(d, 1080, 230, label='MAX7219 (IN side)', w=100)
+d.line([(823, 393), (1000, 393), (1000, 520), (1120, 520)], fill=WIRE['VCC'], width=9, joint='curve')
+d.line([(823, 453), (960, 453), (960, 580), (1120, 580)], fill=WIRE['GND'], width=9, joint='curve')
+for y, t in ((520, 'VCC'), (580, 'GND')):
+    d.ellipse((1112, y - 9, 1130, y + 9), fill=(230, 200, 90))
+    d.text((1142, y), t + '  (display IN)', font=font(28, True), fill=TXT, anchor='lm')
+# capacitor across VCC / GND, between the wires
+cx = 1060
+d.line((cx, 520, cx, 538), fill=WIRE['VCC'], width=6); d.rectangle((cx - 26, 538, cx + 26, 545), fill=TXT)
+d.arc((cx - 26, 552, cx + 26, 584), 200, 340, fill=TXT, width=6)
+d.text((cx, 600), '470-1000 µF  (+ to VCC)', font=font(24, True), fill=(255, 197, 61), anchor='ma')
+# notes
+notes = ['4 modules: one 5 V / 1 A charger for the whole clock is enough (as above).',
+         '8+ modules: a separate 5 V / 2-4 A supply for the display, its GND joined to the ESP32 GND.',
+         'Never wire the display to CMD / SD0-SD3 / CLK pins of an ESP32 DevKit (flash pins).']
+for i, t in enumerate(notes):
+    y = 700 + i * 50
+    d.ellipse((80, y + 6, 104, y + 30), fill=(53, 208, 127) if i < 2 else (255, 77, 77))
+    d.text((120, y), t, font=font(30), fill=TXT if i < 2 else (255, 140, 140))
+im.save(os.path.join(OUT, 'guide_power.png'), optimize=True)
+
 for f in sorted(os.listdir(OUT)):
     print(f, os.path.getsize(os.path.join(OUT, f)) // 1024, 'KB')

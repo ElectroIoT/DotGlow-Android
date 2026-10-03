@@ -86,7 +86,7 @@ fun FlashScreen(vm: FlashViewModel, snackbar: SnackbarHostState, onBack: () -> U
                     Spacer(Modifier.height(10.dp))
                     Bullet("Use a USB-OTG adapter, or a USB-C to micro-USB / USB-C cable that carries data (not a charge-only cable).")
                     Bullet("ESP32-S3: use the port marked USB (or either port).")
-                    Bullet("Unplug the display while flashing if the board keeps restarting.")
+                    Bullet("Unplug the display while flashing: a phone's USB port cannot power it, and the board may keep restarting.")
                     Bullet("Installing erases the board, including its saved settings.")
                 }
 

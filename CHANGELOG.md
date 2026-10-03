@@ -3,6 +3,9 @@
 ## Unreleased (0.1.0, versionCode 1)
 
 ### Added
+- Rotate 180° (upside down): switch on the Display page and a one-tap button on the dashboard.
+- Setup guide: "Important: power" (5 V / 1 A charger required, capacitor, separate supply for 8+ modules),
+  ESP32 DevKit flash-pin warning, IN-side hint, new troubleshooting rows.
 - LED matrix previews drawn like the real display: live clock mirror on the dashboard, digit styles, effects,
   message, display layout, stopwatch.
 - Stopwatch page; optional stopwatch button in the setup guide.

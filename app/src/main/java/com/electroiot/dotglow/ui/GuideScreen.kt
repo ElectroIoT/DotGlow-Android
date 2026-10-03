@@ -146,7 +146,7 @@ fun GuideScreen(snackbar: SnackbarHostState, initialBoard: Int = 0, onFlash: () 
             Bullet("A board: ESP32-S3, ESP32 DevKit, or ESP8266 NodeMCU / Wemos D1 mini (not ESP32-S2: no Bluetooth)")
             Bullet("A MAX7219 4-in-1 LED matrix (8x32, the common blue \"FC-16\" module)")
             Bullet("5 jumper wires (female-female for most modules)")
-            Bullet("A good 5 V / 1 A USB adapter and cable")
+            Bullet("A 5 V / 1 A (or stronger) phone charger + cable: required. A computer USB port is too weak for the display")
             Bullet("Optional: 470-1000 µF capacitor, LDR + 10 kΩ resistor")
             Spacer(Modifier.height(6.dp))
             InfoRow("ESP32 / ESP32-S3", "DotGlow: app + WiFi")
@@ -164,7 +164,24 @@ fun GuideScreen(snackbar: SnackbarHostState, initialBoard: Int = 0, onFlash: () 
             GuideImage(board.image, "Wiring for ${board.name}")
             Spacer(Modifier.height(10.dp))
             board.pins.forEach { (m, e) -> InfoRow("Display $m", "${board.name} $e") }
+            Spacer(Modifier.height(6.dp))
+            Text("Use the display's IN end (the pins marked DIN), not the DOUT end.", color = Muted, fontSize = 13.sp)
+            if (board.name == "ESP32 DevKit") {
+                Spacer(Modifier.height(8.dp))
+                Text("Never use the pins labelled CLK, SD0, SD1, SD2, SD3 or CMD: they belong to the board's flash " +
+                    "memory and the board will not start. The display CLK goes to D18, not to \"CLK\".",
+                    color = MaterialTheme.colorScheme.error, fontSize = 14.sp)
+            }
         }
+
+        SectionCard("Important: power") {
+            GuideImage(R.drawable.guide_power, "Powering the clock from a 5 V charger")
+            Spacer(Modifier.height(10.dp))
+            Bullet("Power the clock from a 5 V / 1 A (or stronger) phone charger. A computer's USB port cannot " +
+                "drive the display: it stays dim, all LEDs stay on or show garbage, and the board keeps restarting.")
+            Bullet("Put a 470-1000 µF capacitor across the display's VCC and GND (+ leg to VCC).")
+            Bullet("8 or more modules: a separate 5 V / 2-4 A supply for the display, with its GND joined to the ESP32 GND.")
+            Bullet("Flashing from a computer is fine; just test the display on the charger.")        }
 
         Step(3, "Install the firmware") {
             Text("Plug the board into this phone with a USB-OTG adapter (or a USB-C data cable) and tap the button. " +
@@ -242,10 +259,12 @@ fun GuideScreen(snackbar: SnackbarHostState, initialBoard: Int = 0, onFlash: () 
 
         SectionCard("Troubleshooting") {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                InfoRow("All LEDs on", "Check CS and 5 V")
+                InfoRow("Dim / all LEDs stuck on", "5 V / 1 A charger, not PC USB")
+                InfoRow("Board keeps restarting", "Stronger 5 V supply + capacitor")
+                InfoRow("Only 1st module works", "Check the joints between modules")
+                InfoRow("ESP32 won't start", "Wire on CMD / SD / CLK pin?")
                 InfoRow("Text scrambled", "Settings → Display → type")
-                InfoRow("Upside down", "Settings → Display → flip")
-                InfoRow("Keeps restarting", "Better 5 V supply")
+                InfoRow("Upside down", "Display → Rotate 180°, or double-press BOOT")
                 InfoRow("Can't pair", "Use the PIN on the display")
                 InfoRow("Install fails", "Data cable; hold BOOT")
             }

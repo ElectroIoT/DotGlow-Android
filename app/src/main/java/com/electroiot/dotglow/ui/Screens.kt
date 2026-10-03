@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Usb
+import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayCircle
@@ -311,11 +312,15 @@ fun DashboardScreen(
     brightness: Int,
     face: FaceStyle,
     modules: Int,
+    rotated: Boolean,
+    flipH: Boolean,
+    flipV: Boolean,
     reconnecting: Boolean,
     snackbar: SnackbarHostState,
     onBrightness: (Int, Boolean) -> Unit,
     onAnimation: (Int) -> Unit,
     onDigits: () -> Unit,
+    onRotate: (Boolean) -> Unit,
     onOpen: (Page) -> Unit,
     onDisconnect: () -> Unit,
 ) {
@@ -325,6 +330,13 @@ fun DashboardScreen(
             TopAppBar(
                 title = { Text(info.name, fontWeight = FontWeight.Bold) },
                 navigationIcon = { IconButton(onClick = onDisconnect) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Disconnect") } },
+                actions = {
+                    // one tap: turn the display upside down (and back)
+                    IconButton(onClick = { onRotate(!rotated) }) {
+                        Icon(Icons.Default.ScreenRotation, if (rotated) "Turn display back" else "Rotate display 180°",
+                            tint = if (rotated) LedRed else MaterialTheme.colorScheme.onSurface)
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
@@ -345,6 +357,8 @@ fun DashboardScreen(
             MatrixHero(
                 scene = if (status?.synced == true) live else waiting,
                 modules = modules,
+                flipH = flipH,
+                flipV = flipV,
                 label = if (reconnecting) "" else "Live",
                 caption = when {
                     reconnecting -> "Reconnecting..."

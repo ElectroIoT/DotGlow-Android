@@ -210,8 +210,12 @@ fun DisplayScreen(vm: ClockViewModel, snackbar: SnackbarHostState, onBack: () ->
             OutlinedButton(onClick = vm::showModuleNumbers, Modifier.padding(top = 8.dp)) { Text("Show module numbers") }
         }
         SectionCard("Orientation") {
+            SwitchRow("Rotate 180° (upside down)", c.flag("flipH") && c.flag("flipV"),
+                "For a display mounted the other way up. On the clock: double-press BOOT") { vm.rotate180(it) }
+            RowDivider()
+            Text("Fine-tune", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
             SwitchRow("Mirror left-right", c.flag("flipH")) { vm.set("flipH", it) }
-            SwitchRow("Flip top-bottom", c.flag("flipV"), "Both on = upside down") { vm.set("flipV", it) }
+            SwitchRow("Flip top-bottom", c.flag("flipV")) { vm.set("flipV", it) }
             SwitchRow("Show seconds", c.flag("showSecs"), "Needs 6 or more modules") { vm.set("showSecs", it) }
         }
     }

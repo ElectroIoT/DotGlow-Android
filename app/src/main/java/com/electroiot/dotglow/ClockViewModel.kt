@@ -300,6 +300,13 @@ class ClockViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setBrightness(value: Int, save: Boolean) = set("br", value, live = !save)
 
+    /** Upside down = both flips (the clock's mirror left-right + flip top-bottom). */
+    fun rotate180(on: Boolean) {
+        set("flipH", on)
+        set("flipV", on)
+        message(if (on) "Display rotated 180°" else "Display back to normal")
+    }
+
     // ---- WiFi --------------------------------------------------------------------------------
     private val _networks = MutableStateFlow<List<WifiNetwork>?>(null)
     val networks: StateFlow<List<WifiNetwork>?> = _networks.asStateFlow()

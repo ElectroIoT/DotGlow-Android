@@ -38,6 +38,7 @@ Package `com.electroiot.dotglow` · app name "DotGlow: LED Matrix Clock".
 | 📶 **WiFi setup** | Scan and join networks through the clock, no hotspot juggling |
 | ⚙️ **Every setting** | Time format and zone, colon, seconds bar, date, brightness, night mode, light sensor, modules, mirror / flip, effects, messages, special days |
 | ⏱️ **Stopwatch** | Start / pause / reset on the clock, with a big readout in the app |
+| 🔄 **Rotate 180°** | Display mounted upside down? One tap on the dashboard |
 | ⬆️ **Updates** | Over Bluetooth (no WiFi needed, ~30 s), or ask the clock to update from GitHub |
 | 🔌 **Install firmware over USB** | Plug a new ESP32 / ESP32-S3 / ESP8266 (NodeMCU) into the phone: the app detects the chip and flashes the right firmware |
 | 📖 **Setup guide** | Parts, wiring pictures for 3 boards, more modules + power, light sensor, stopwatch button, video link |
@@ -52,6 +53,7 @@ Package `com.electroiot.dotglow` · app name "DotGlow: LED Matrix Clock".
 ## Getting started (users)
 
 1. **Build the clock**: open the app → **Setup guide** (wiring for ESP32-S3, ESP32 DevKit, ESP8266).
+   Power it from a **5 V / 1 A phone charger**: a computer USB port is too weak for the display.
 2. **Install the firmware**: plug the board into the phone with a USB-OTG adapter → **Install firmware → Find my board → Install**.
 3. **Pair**: power the clock, tap **DotGlow-XXXX**, type the PIN shown on the display.
 4. **WiFi**: tap **Set up**, pick your network, enter the password. The clock gets the time and the app reconnects.

@@ -59,7 +59,7 @@ fun rememberPhoneClock(style: FaceStyle = FaceStyle()): Scene {
 
 /** The big matrix at the top of a screen, with a caption under it. */
 @Composable
-fun MatrixHero(scene: Scene, caption: String = "", modules: Int = 4, label: String = "") {
+fun MatrixHero(scene: Scene, caption: String = "", modules: Int = 4, label: String = "", flipH: Boolean = false, flipV: Boolean = false) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -77,7 +77,7 @@ fun MatrixHero(scene: Scene, caption: String = "", modules: Int = 4, label: Stri
             }
         }
         // a 16-module display would be tiny on a phone: show at most 8, scaled to the width
-        LedMatrix(scene, modules = modules.coerceIn(4, 8))
+        LedMatrix(scene, modules = modules.coerceIn(4, 8), flipH = flipH, flipV = flipV)
         if (caption.isNotEmpty()) {
             Text(caption, color = Muted, modifier = Modifier.padding(top = 10.dp), textAlign = TextAlign.Center)
         }
