@@ -50,8 +50,21 @@ Package `com.electroiot.dotglow` · app name "DotGlow: LED Matrix Clock".
 
 <p align="center"><img src="docs/system.svg" alt="App to clock over Bluetooth, clock to the internet over WiFi" width="860"></p>
 
+## Get the app (closed testing)
+
+DotGlow is in **closed testing on Google Play**. Anyone in the tester group gets it:
+
+1. Join the Google Group **[devmeettesters@googlegroups.com](https://groups.google.com/g/devmeettesters)**
+   with the Google account you use on Play.
+2. Open **[play.google.com/apps/testing/com.electroiot.dotglow](https://play.google.com/apps/testing/com.electroiot.dotglow)**
+   and tap **Become a tester**.
+3. Install DotGlow from Google Play and keep it installed for at least 14 days.
+
+Details: [mtpcode.com/apps/dotglow.html](https://mtpcode.com/apps/dotglow.html) · feedback: admin@mtpcode.com
+
 ## Getting started (users)
 
+0. **Get the app**: see [Get the app](#get-the-app-closed-testing) above.
 1. **Build the clock**: open the app → **Setup guide** (wiring for ESP32-S3, ESP32 DevKit, ESP8266).
    Power it from a **5 V / 1 A phone charger**: a computer USB port is too weak for the display.
 2. **Install the firmware**: plug the board into the phone with a USB-OTG adapter → **Install firmware → Find my board → Install**.

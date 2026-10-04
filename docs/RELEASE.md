@@ -22,7 +22,9 @@
 
 - Play Console: developer "MTP Code" (8802788467778962488), app ID 4972527762576844971. Store listing, store
   settings (Tools) and every App content section are done (content rating: IARC, Everyone / PEGI 3; target 18+).
-  A personal account needs a closed test (12 testers, 14 days) before production access.
+  A personal account needs a closed test (12 testers, 14 days) before production access. Closed testing - Alpha
+  testers = Google Groups devmeettesters@googlegroups.com (+ testers-community@googlegroups.com); opt-in link
+  https://play.google.com/apps/testing/com.electroiot.dotglow. Release 3 (1.0.0) submitted 2026-10-04.
 
 ## If ads are added later
 
