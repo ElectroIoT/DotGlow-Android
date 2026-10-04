@@ -42,13 +42,13 @@ The app draws a real-looking LED matrix that shows exactly what your clock shows
 Start, pause and reset the clock's stopwatch from the app, or with an optional push button on the clock.
 
 ★ FIRMWARE UPDATES OVER BLUETOOTH
-Install new firmware without WiFi, in about 30 seconds. Or let the clock update itself from the internet at night.
+Install new firmware without WiFi, in about a minute.
 
 ★ INSTALL FIRMWARE ON A NEW BOARD
 Plug a new ESP32, ESP32-S3 or ESP8266 (NodeMCU) board into your phone with a USB-OTG adapter. DotGlow detects the chip and installs the right firmware. No computer needed.
 
 ★ STEP-BY-STEP SETUP GUIDE
-Parts list, wiring pictures for ESP32-S3, ESP32 DevKit and ESP8266, power tips, chaining more modules, light sensor and stopwatch button, troubleshooting and a setup video.
+Parts list, wiring pictures for ESP32-S3, ESP32 DevKit and ESP8266, power tips, chaining more modules, light sensor and stopwatch button, and troubleshooting.
 
 ★ PRIVATE AND SECURE
 • Encrypted Bluetooth (LE Secure Connections), PIN pairing
@@ -58,7 +58,7 @@ Parts list, wiring pictures for ESP32-S3, ESP32 DevKit and ESP8266, power tips, 
 ★ NO CLOCK YET?
 Tap "Try the demo clock" and explore every screen.
 
-DotGlow clocks are open hardware: you build them from common parts (an ESP32 board, a MAX7219 4-in-1 LED matrix and a 5 V phone charger). The setup guide in the app shows how.
+DotGlow clocks are DIY hardware: you build them from common parts (an ESP32 board, a MAX7219 4-in-1 LED matrix and a 5 V phone charger). The setup guide in the app shows how.
 
 Made with care in India by Manoranjan (manoranjan.dev) · ElectroIoT.
 ```
@@ -87,8 +87,8 @@ Made with care in India by Manoranjan (manoranjan.dev) · ElectroIoT.
 | Privacy policy | https://mtpcode.com/legal/dotglow/privacy.html |
 | Ads | No ads |
 | App access | All functionality is available without special access. Reviewers without a clock: tap **"Try the demo clock"** on the first screen |
-| Content rating | Questionnaire: Utility / productivity; no violence, no user content, no sharing, no location. Expected: Everyone / 3+ |
-| Target audience | 13+ (not designed for children) |
+| Content rating | IARC questionnaire: All other app types, every answer No. Result: Everyone / PEGI 3 |
+| Target audience | 18+ (not designed for children) |
 | News app | No |
 | Data safety | **No data collected, no data shared.** The app talks to the clock over Bluetooth / USB on the device; it downloads firmware and setup-guide files from manoranjan.dev and github.com without sending personal data |
 | Government app / financial features / health | No |
