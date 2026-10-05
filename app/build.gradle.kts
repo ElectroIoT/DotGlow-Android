@@ -22,8 +22,8 @@ android {
         applicationId = "com.electroiot.dotglow"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.0.0"
+        versionCode = 4
+        versionName = "1.0.1"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -80,6 +80,9 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.biometric)
+    // biometric 1.1.0 pulls fragment 1.2.5, whose FragmentActivity rejects Activity Result API request codes
+    // ("Can only use lower 16 bits for requestCode") and crashed the Bluetooth permission request.
+    implementation(libs.androidx.fragment)
     implementation(libs.usb.serial)
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation(libs.junit)

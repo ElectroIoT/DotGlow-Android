@@ -109,6 +109,13 @@ Made with care in India by Manoranjan (manoranjan.dev) · ElectroIoT.
 | USB host (optional feature) | Installing firmware on a board plugged into the phone |
 | USE_BIOMETRIC | Optional fingerprint unlock of the app lock |
 
+## Release notes (1.0.1)
+
+```
+• Fixed: the app closed when tapping "Allow Bluetooth" on a fresh install
+• The first screen now scrolls in landscape
+```
+
 ## Release notes (1.0.0)
 
 ```

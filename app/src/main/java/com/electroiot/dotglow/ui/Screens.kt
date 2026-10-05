@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -64,6 +63,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -172,7 +172,11 @@ fun ScanScreen(
             )
         },
     ) { pad ->
-        Column(Modifier.padding(pad).fillMaxSize().wrapContentWidth().widthIn(max = 640.dp).padding(horizontal = 16.dp)) {
+        // Scrolls so the permission button and the "New here?" card stay reachable in landscape.
+        Column(
+            Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState())
+                .wrapContentWidth().widthIn(max = 640.dp).padding(horizontal = 16.dp),
+        ) {
             val clock = rememberPhoneClock()
             val hero = remember { SequenceScene(ScrollScene("DOTGLOW * MANORANJAN.DEV", 32), Timed(clock, 9_000)) }
             MatrixHero(hero, "Find your clock")
@@ -202,9 +206,7 @@ fun ScanScreen(
                             color = Muted, modifier = Modifier.padding(vertical = 12.dp),
                         )
                     }
-                    LazyColumn(Modifier.weight(1f, fill = false)) {
-                        items(clocks, key = { it.address }) { clock -> ClockRow(clock) { onPick(clock) } }
-                    }
+                    clocks.forEach { clock -> key(clock.address) { ClockRow(clock) { onPick(clock) } } }
                 }
             }
             SectionCard("New here?") {

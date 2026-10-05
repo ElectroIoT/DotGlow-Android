@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.1 (versionCode 4), 2026-10-05
+
+### Fixed
+- Crash on "Allow Bluetooth" after a fresh install: biometric 1.1.0 pulled androidx.fragment 1.2.5, which rejects
+  the Activity Result API's request codes. fragment-ktx 1.8.5 is now a direct dependency.
+- The first screen scrolls, so the permission button and "New here?" stay reachable in landscape.
+
+## 1.0.0 (versionCode 3), 2026-10-04
+
+- First closed-testing release on Google Play (R8 shrinking on).
+
 ## Unreleased (0.1.0, versionCode 1)
 
 ### Added
