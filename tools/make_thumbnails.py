@@ -1,9 +1,9 @@
 """YouTube thumbnails (1280x720 JPG) for the DotGlow videos, built from real photos.
 
-    python tools/make_thumbnails.py <clock-photo.jpg> <phone-photo.jpg> [out-dir]
+    python tools/make_thumbnails.py <clock-photo.jpg> <app-screenshot.png> [out-dir]
 
-clock-photo: the lit clock (colon visible); phone-photo: the phone showing the connected app.
-Crop boxes below are for the 1125x2000 photos in docs/youtube/photos/.
+clock-photo: the lit clock (colon visible), crop box below is for the 1125x2000 photo in docs/youtube/photos/.
+app-screenshot: a plain 1080x2400 app screenshot (docs/play-store/raw/); it is put into a drawn phone frame.
 """
 import math
 import os
@@ -175,22 +175,43 @@ def build_thumb(clock, out):
     c.convert("RGB").save(out, quality=93, optimize=True)
 
 
-def demo_thumb(clock, phone, out):
+def phone_mockup(shot, screen_w=400):
+    """Phone frame (bezel, punch-hole camera, side buttons) around an app screenshot. Returns an RGBA image."""
+    sh = screen_w * shot.height // shot.width
+    bez = 17
+    pw, ph = screen_w + 2 * bez, sh + 2 * bez
+    out = Image.new("RGBA", (pw + 10, ph), (0, 0, 0, 0))
+    d = ImageDraw.Draw(out)
+    d.rounded_rectangle([pw - 2, 190, pw + 8, 280], 5, fill=(70, 72, 80))        # power button
+    d.rounded_rectangle([pw - 2, 320, pw + 8, 430], 5, fill=(70, 72, 80))        # volume
+    d.rounded_rectangle([0, 0, pw - 1, ph - 1], 70, fill=(22, 23, 28), outline=(120, 124, 136), width=4)
+    d.rounded_rectangle([5, 5, pw - 6, ph - 6], 66, outline=(44, 46, 54), width=3)
+    screen = rounded(shot.convert("RGB").resize((screen_w, sh), Image.LANCZOS), 54)
+    out.alpha_composite(screen, (bez, bez))
+    d = ImageDraw.Draw(out)
+    d.ellipse([pw // 2 - 11, bez + 10, pw // 2 + 11, bez + 32], fill=(10, 10, 12))   # camera hole
+    d.ellipse([pw // 2 - 4, bez + 17, pw // 2 + 4, bez + 25], fill=(24, 30, 52))
+    return out
+
+
+def demo_thumb(clock, shot, out):
     c = background()
-    # phone, right, slightly tilted
-    ph = punch(crop_fit(phone, (270, 845, 935, 1935), (432, 705)), contrast=1.1, color=1.1, bright=1.12)
-    ph = rounded(ph, 44)
-    pbox = (835, 22, 835 + 432, 22 + 705)
-    glow_behind(c, pbox, (255, 70, 70), blur=48, grow=18, alpha=190)
-    tilt = Image.new("RGBA", (ph.width + 60, ph.height + 60), (0, 0, 0, 0))
-    tilt.alpha_composite(ph, (30, 30))
-    tilt = tilt.rotate(-6, expand=True, resample=Image.BICUBIC)
-    sh = Image.new("RGBA", c.size, (0, 0, 0, 0))
-    sh.alpha_composite(tilt, (pbox[0] - 40, pbox[1] - 30))
+    shot = shot.convert("RGB").crop((0, 96, shot.width, shot.height))   # drop the real status bar (carrier, notifications)
+    padded = Image.new("RGB", (shot.width, shot.height + 100), shot.getpixel((4, 4)))   # clear band for the camera hole
+    padded.paste(shot, (0, 100))
+    shot = padded
+    phone = phone_mockup(shot, 350)
+    tilt = phone.rotate(-7, expand=True, resample=Image.BICUBIC)
+    pos = (788, 44)
+    gl = Image.new("RGBA", c.size, (0, 0, 0, 0))
+    ImageDraw.Draw(gl).rounded_rectangle([pos[0] + 20, pos[1] + 30, pos[0] + tilt.width - 20, H + 200], 80, fill=(255, 60, 60, 190))
+    c.alpha_composite(gl.filter(ImageFilter.GaussianBlur(60)))
     shadow_layer = Image.new("RGBA", c.size, (0, 0, 0, 0))
-    shadow_layer.paste((0, 0, 0, 200), (0, 0), sh.getchannel("A"))
-    c.alpha_composite(shadow_layer.filter(ImageFilter.GaussianBlur(20)), (12, 16))
-    c.alpha_composite(sh)
+    shadow_layer.paste((0, 0, 0, 210), (pos[0] - 14, pos[1] + 12), tilt.getchannel("A"))
+    c.alpha_composite(shadow_layer.filter(ImageFilter.GaussianBlur(18)))
+    layer = Image.new("RGBA", c.size, (0, 0, 0, 0))
+    layer.paste(tilt, pos, tilt)
+    c.alpha_composite(layer)
     # clock photo, bottom left
     photo = punch(crop_fit(clock, (205, 300, 1055, 745), (590, 309)))
     box = (46, 392, 636, 701)
@@ -202,7 +223,7 @@ def demo_thumb(clock, phone, out):
     text(c, (50, 24), "APP + CLOCK", font(IMPACT, 104), WHITE, stroke=7, shadow_px=6)
     text(c, (46, 124), "LIVE DEMO", font(IMPACT, 190), RED, stroke=9, shadow_px=8)
     text(c, (54, 326), "CONTROL IT FROM YOUR PHONE", font(BLACK, 40), (255, 200, 90))
-    bluetooth(c, 730, 540, r=58)
+    bluetooth(c, 712, 540, r=54)
     c.convert("RGB").save(out, quality=93, optimize=True)
 
 
