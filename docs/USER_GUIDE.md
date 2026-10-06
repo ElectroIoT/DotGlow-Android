@@ -32,7 +32,7 @@ Always connect to the display's **IN** end (pins marked **DIN**).
 
 > ESP32 DevKit: never use the pins labelled **CLK, SD0-SD3, CMD** (flash pins). The board will not start.
 
-The app shows all of this with pictures: **Setup guide** (first screen → *New here?*).
+The app shows all of this with pictures: **Setup guide** (first screen → *New here?*). Its **Troubleshooting** section lists the common problems in groups; tap one to see the steps.
 
 ## 3. Install the firmware
 
@@ -92,6 +92,7 @@ All settings are there too. Set a password under *Security* in the app or on the
 
 | Problem | Fix |
 |---|---|
+| Board light is on, but the app doesn't see the clock | **Join the grounds:** display GND, board GND and the power supply GND must all be connected. Use a stable 5 V supply (a weak one restarts the board when Bluetooth starts) |
 | Display dim, all LEDs stuck on, garbage | **Power:** 5 V / 1 A charger, not a computer USB port. Add the capacitor |
 | Board keeps restarting / drops off USB | Same: power. Use a stronger supply |
 | Only the first module works | Broken link between module 1 and 2: re-solder the joints, or the wires are on the OUT end |
@@ -100,6 +101,10 @@ All settings are there too. Set a password under *Security* in the app or on the
 | Can't pair / wrong PIN | Use the 6 digits on the display within 30 s; after a factory reset the app re-pairs by itself |
 | "Getting time..." | The WiFi has no internet, or the time zone is wrong |
 | Upside down / mirrored | Display → Rotate 180° (or double-press BOOT), mirror / flip |
+| Board drops off USB / flashing stops half way | Take the display's 5 V wire off the board while flashing, use a short thick data cable and another port |
+| "Allow Bluetooth" shows no dialog | Phone Settings → Apps → DotGlow → Permissions → Nearby devices → Allow |
+| Keeps reconnecting / timed out | Forget the clock in the phone's Bluetooth settings, restart the clock, connect again |
+| Can't join WiFi | 2.4 GHz network only; check the password |
 | Install firmware fails | Use a data cable; hold BOOT, tap RESET, release BOOT, try again |
 
 No clock yet? On the first screen tap **Try the demo clock** to explore every page.

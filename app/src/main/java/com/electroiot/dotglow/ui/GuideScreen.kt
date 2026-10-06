@@ -257,17 +257,6 @@ fun GuideScreen(snackbar: SnackbarHostState, initialBoard: Int = 0, onFlash: () 
                 "The app has the same controls under Stopwatch.", fontSize = 14.sp)
         }
 
-        SectionCard("Troubleshooting") {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                InfoRow("Dim / all LEDs stuck on", "5 V / 1 A charger, not PC USB")
-                InfoRow("Board keeps restarting", "Stronger 5 V supply + capacitor")
-                InfoRow("Only 1st module works", "Check the joints between modules")
-                InfoRow("ESP32 won't start", "Wire on CMD / SD / CLK pin?")
-                InfoRow("Text scrambled", "Settings → Display → type")
-                InfoRow("Upside down", "Display → Rotate 180°, or double-press BOOT")
-                InfoRow("Can't pair", "Use the PIN on the display")
-                InfoRow("Install fails", "Data cable; hold BOOT")
-            }
-        }
+        TroubleshootingCard()
     }
 }

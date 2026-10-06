@@ -22,8 +22,8 @@ android {
         applicationId = "com.electroiot.dotglow"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.0.1"
+        versionCode = 5
+        versionName = "1.0.2"
         vectorDrawables { useSupportLibrary = true }
     }
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.2 (versionCode 5), 2026-10-06
+
+### Changed
+- Setup guide: new Troubleshooting section, 15 common problems in 5 groups (power and ground, display and wiring,
+  Bluetooth and the app, WiFi and time, installing firmware); tap a problem to see numbered steps. Includes
+  "board light is on but the app doesn't see the clock" (join the grounds).
+
 ## 1.0.1 (versionCode 4), 2026-10-05
 
 ### Fixed
