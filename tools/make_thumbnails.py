@@ -2,7 +2,7 @@
 
     python tools/make_thumbnails.py <clock-photo.jpg> <app-screenshot.png> [out-dir]
 
-clock-photo: the lit clock (colon visible), crop box below is for the 1125x2000 photo in docs/youtube/photos/.
+clock-photo: docs/youtube/photos/clock-day-lit.jpg (made by tools/light_up_clock_photo.py from a daylight photo).
 app-screenshot: a plain 1080x2400 app screenshot (docs/play-store/raw/); it is put into a drawn phone frame.
 """
 import math
@@ -20,6 +20,8 @@ IMPACT = FONTS + "impact.ttf"
 BLACK = FONTS + "seguibl.ttf"
 BOLD = FONTS + "segoeuib.ttf"
 
+# crop of the daylight photo with lit digits (docs/youtube/photos/clock-day-lit.jpg, 2000x906): the whole case
+CASE_CROP = (372, 104, 1648, 793)
 HERE = os.path.dirname(os.path.abspath(__file__))
 ICON = os.path.join(HERE, "..", "docs", "play-store", "icon-512.png")
 
@@ -105,7 +107,7 @@ def check_row(canvas, x, y, label, w=520):
     d.rounded_rectangle([x, y, x + 12, y + 78], 6, fill=RED)
     d.ellipse([x + 30, y + 16, x + 76, y + 62], fill=RED)
     d.line([(x + 41, y + 40), (x + 50, y + 49), (x + 66, y + 30)], fill=WHITE, width=7, joint="curve")
-    d.text((x + 96, y + 8), label, font=font(BLACK, 46), fill=WHITE)
+    d.text((x + 96, y + 10), label, font=font(BLACK, 40), fill=WHITE)
 
 
 def soldering_iron(canvas, cx, cy, scale=1.0, angle=-35):
@@ -158,8 +160,8 @@ def crop_fit(im, box, size):
 def build_thumb(clock, out):
     c = background()
     # clock photo, bottom right
-    photo = punch(crop_fit(clock, (205, 300, 1055, 745), (640, 335)))
-    box = (600, 340, 1240, 675)
+    photo = punch(crop_fit(clock, CASE_CROP, (770, 416)), contrast=1.04, color=1.05)
+    box = (476, 296, 1246, 712)
     glow_behind(c, box, RED, blur=46, grow=22, alpha=230)
     shadow(c, box)
     c.alpha_composite(rounded(photo, 30), (box[0], box[1]))
@@ -170,7 +172,7 @@ def build_thumb(clock, out):
     text(c, (60, 330), "FROM SCRATCH", font(BLACK, 54), (255, 200, 90))
     # steps
     for i, label in enumerate(["SOLDERING", "WIRING", "APP SETUP"]):
-        check_row(c, 56, 400 + i * 92, label, w=480)
+        check_row(c, 56, 400 + i * 92, label, w=390)
     soldering_iron(c, 1085, 200, scale=0.8, angle=212)   # tip points down-left, at the clock
     c.convert("RGB").save(out, quality=93, optimize=True)
 
@@ -213,8 +215,8 @@ def demo_thumb(clock, shot, out):
     layer.paste(tilt, pos, tilt)
     c.alpha_composite(layer)
     # clock photo, bottom left
-    photo = punch(crop_fit(clock, (205, 300, 1055, 745), (590, 309)))
-    box = (46, 392, 636, 701)
+    photo = punch(crop_fit(clock, CASE_CROP, (600, 324)), contrast=1.04, color=1.05)
+    box = (46, 382, 646, 706)
     glow_behind(c, box, RED, blur=44, grow=20, alpha=225)
     shadow(c, box)
     c.alpha_composite(rounded(photo, 30), (box[0], box[1]))
