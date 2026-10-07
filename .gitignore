@@ -25,3 +25,6 @@ video/studio/.hyperframes/
 video/studio/assets/clips/
 video/studio/assets/audio/*.wav
 video/studio/assets/end-photo.jpg
+
+video/intro/renders/
+video/intro/assets/audio/*.wav
