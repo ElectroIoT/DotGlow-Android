@@ -11,3 +11,10 @@
 *.jks
 *.keystore
 keystore.properties
+
+# Video: original recordings and edits are large; never commit them (keep in video/raw, video/edited)
+video/raw/
+video/edited/
+*.mp4
+*.mov
+*.mkv
