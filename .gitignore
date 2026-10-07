@@ -18,3 +18,6 @@ video/edited/
 *.mp4
 *.mov
 *.mkv
+video/studio/renders/
+video/studio/node_modules/
+video/studio/.hyperframes/
