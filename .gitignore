@@ -21,3 +21,7 @@ video/edited/
 video/studio/renders/
 video/studio/node_modules/
 video/studio/.hyperframes/
+
+video/studio/assets/clips/
+video/studio/assets/audio/*.wav
+video/studio/assets/end-photo.jpg

@@ -1,53 +1,208 @@
 <!doctype html>
-<html lang="en" data-resolution="landscape">
+<html lang="en" data-resolution="portrait">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=1920, height=1080" />
+    <meta name="viewport" content="width=1080, height=1920" />
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-      html,
-      body {
-        margin: 0;
-        width: 1920px;
-        height: 1080px;
-        overflow: hidden;
-        background: #0a0a0a;
-      }
-      #root {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-      }
-      #title {
-        color: #ff3b3b;
-        font-size: 72px;
-        font-weight: 600;
-        letter-spacing: -0.03em;
-      }
+      @font-face { font-family: "Noto Sans Devanagari"; font-style: normal; font-weight: 100 900;
+                   src: url(assets/fonts/noto-sans-devanagari-1.woff2) format("woff2"); }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #0a0a0a; }
+      #root { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #0c0e13;
+              font-family: Inter, "Noto Sans Devanagari", ui-sans-serif, system-ui, sans-serif; }
+
+      /* footage: untimed wrappers carry the motion, the <video> inside carries the timing */
+      .vwrap { position: absolute; inset: 0; overflow: hidden; }
+      .vwrap video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+      /* readability gradients (untimed, full-bleed) */
+      #shade-top { position: absolute; inset: 0 0 auto 0; height: 900px;
+                   background: linear-gradient(to bottom, rgba(8,8,12,.88) 0%, rgba(8,8,12,.66) 50%, rgba(8,8,12,0) 100%); }
+      #shade-bot { position: absolute; inset: auto 0 0 0; height: 520px;
+                   background: linear-gradient(to top, rgba(8,8,12,.55) 0%, rgba(8,8,12,0) 100%); }
+      #flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
+      #brand { position: absolute; left: 44px; top: 70px; display: flex; align-items: center; gap: 14px; opacity: 0;
+               color: #fff; font-weight: 800; font-size: 34px; letter-spacing: .02em; text-shadow: 0 3px 14px rgba(0,0,0,.7); }
+      #brand i { width: 16px; height: 16px; border-radius: 50%; background: #ff3b3b; box-shadow: 0 0 18px #ff3b3b; display: block; }
+
+      /* scene captions */
+      .cap { padding: 190px 56px 0; display: flex; flex-direction: column; align-items: center; text-align: center; }
+      .chip { display: inline-block; background: #ff3b3b; color: #fff; font-weight: 900; font-size: 34px; letter-spacing: .12em;
+              padding: 10px 28px; border-radius: 999px; margin-bottom: 26px; box-shadow: 0 6px 26px rgba(255,59,59,.55); }
+      .big { color: #fff; font-weight: 900; font-size: 104px; line-height: 1.02; letter-spacing: -.02em; text-transform: uppercase;
+             text-shadow: 0 6px 30px rgba(0,0,0,.65), 0 2px 0 rgba(0,0,0,.4); }
+      .big.red { color: #ff4a4a; text-shadow: 0 6px 30px rgba(0,0,0,.85), 0 2px 0 rgba(0,0,0,.7), 0 0 2px rgba(0,0,0,.9); }
+      .big.s { font-size: 92px; }
+      .hi { margin-top: 28px; color: #ffe08a; font-weight: 700; font-size: 48px; line-height: 1.3; padding: 8px 30px;
+            background: rgba(8,8,12,.62); border-radius: 22px; text-shadow: 0 2px 10px rgba(0,0,0,.7); }
+      .ln { display: block; }
+      /* captions that must not cover the glowing clock: lower area / compact top */
+      .cap.low { padding-top: 1330px; }
+      .cap.low .chip { font-size: 30px; margin-bottom: 18px; padding: 8px 24px; }
+      .cap.low .big { font-size: 84px; }
+      .cap.low .hi { font-size: 44px; margin-top: 18px; }
+      .cap.tight { padding-top: 140px; }
+      .cap.tight .chip { font-size: 30px; margin-bottom: 16px; padding: 8px 24px; }
+      .cap.tight .big { font-size: 88px; }
+      .cap.tight .hi { font-size: 42px; margin-top: 16px; }
+
+      /* end card */
+      #end { background: #0c0e13; }
+      #end-bg { position: absolute; inset: 0; background: url(assets/end-photo.jpg) center/cover; filter: blur(34px) brightness(.35) saturate(1.3); transform: scale(1.3); }
+      #end-dots { position: absolute; inset: 0; background: radial-gradient(rgba(255,59,59,.22) 2px, transparent 2.4px) 0 0/30px 30px; }
+      #end-col { position: absolute; left: 0; right: 0; top: 150px; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 50px; }
+      #end-photo { width: 900px; height: 486px; border-radius: 36px; background: url(assets/end-photo.jpg) center/cover;
+                   box-shadow: 0 0 90px rgba(255,59,59,.55), 0 30px 70px rgba(0,0,0,.6); border: 3px solid rgba(255,140,140,.55); }
+      #end-title { margin-top: 64px; color: #fff; font-weight: 900; font-size: 128px; line-height: 1; letter-spacing: -.02em; text-shadow: 0 8px 36px rgba(0,0,0,.6); }
+      #end-title b { color: #ff3b3b; }
+      #end-brand { margin-top: 26px; display: flex; align-items: center; gap: 22px; color: #fff; font-weight: 800; font-size: 54px; }
+      #end-brand img { width: 92px; height: 92px; border-radius: 22px; box-shadow: 0 0 36px rgba(255,59,59,.6); }
+      #end-pill { margin-top: 40px; background: #fff; color: #14161d; font-weight: 900; font-size: 44px; padding: 16px 38px; border-radius: 999px; }
+      #end-hi { margin-top: 30px; color: #ffe08a; font-weight: 700; font-size: 50px; text-shadow: 0 4px 20px rgba(0,0,0,.8); }
     </style>
   </head>
   <body>
-    <div
-      id="root"
-      data-composition-id="main"
-      data-start="0"
-      data-duration="3"
-      data-width="1920"
-      data-height="1080"
-    >
-      <h1 id="title" class="clip" data-start="0" data-duration="3" data-track-index="0">DotGlow</h1>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="31.4" data-width="1080" data-height="1920">
+      <!-- FOOTAGE -->
+      <div class="vwrap" id="w-a"><video id="v-a" src="assets/clips/a-hook.mp4" muted playsinline data-start="0" data-duration="3.2" data-track-index="0"></video></div>
+      <div class="vwrap" id="w-b"><video id="v-b" src="assets/clips/b-power.mp4" muted playsinline data-start="2.9" data-duration="3.4" data-track-index="0"></video></div>
+      <div class="vwrap" id="w-c"><video id="v-c" src="assets/clips/c-pair.mp4" muted playsinline data-start="6.0" data-duration="4.2" data-track-index="0"></video></div>
+      <div class="vwrap" id="w-d"><video id="v-d" src="assets/clips/d-hero.mp4" muted playsinline data-start="9.9" data-duration="3.6" data-track-index="0"></video></div>
+      <div class="vwrap" id="w-e"><video id="v-e" src="assets/clips/e-effects.mp4" muted playsinline data-start="13.2" data-duration="7.0" data-track-index="0"></video></div>
+      <div class="vwrap" id="w-f"><video id="v-f" src="assets/clips/f-stopwatch.mp4" muted playsinline data-start="19.9" data-duration="4.0" data-track-index="0"></video></div>
+      <div class="vwrap" id="w-g"><video id="v-g" src="assets/clips/g-message.mp4" muted playsinline data-start="23.6" data-duration="3.5" data-track-index="0"></video></div>
+
+      <div id="shade-top"></div>
+      <div id="shade-bot"></div>
+      <div id="brand"><i></i>ElectroIoT.in</div>
+
+      <!-- CAPTIONS -->
+      <div class="clip cap" id="cap1" data-start="0.25" data-duration="2.85" data-track-index="2">
+        <span class="chip">DIY PROJECT</span>
+        <div class="big s"><span class="ln">I BUILT A</span></div>
+        <div class="big s red"><span class="ln">SMART LED CLOCK</span></div>
+        <div class="hi">मैंने बनाई स्मार्ट LED घड़ी</div>
+      </div>
+      <div class="clip cap" id="cap2" data-start="3.15" data-duration="2.85" data-track-index="2">
+        <span class="chip">POWER ON</span>
+        <div class="big"><span class="ln">ESP32 +</span></div>
+        <div class="big red"><span class="ln">LED MATRIX</span></div>
+        <div class="hi">पावर ऑन, स्टार्ट-अप एनिमेशन</div>
+      </div>
+      <div class="clip cap tight" id="cap3" data-start="6.3" data-duration="3.5" data-track-index="2">
+        <span class="chip">SECURE PAIRING</span>
+        <div class="big"><span class="ln">PAIR IN</span></div>
+        <div class="big red"><span class="ln">SECONDS</span></div>
+        <div class="hi">पिन घड़ी की स्क्रीन पर दिखता है</div>
+      </div>
+      <div class="clip cap" id="cap4" data-start="10.1" data-duration="3.0" data-track-index="2">
+        <span class="chip">ALWAYS ON TIME</span>
+        <div class="big"><span class="ln">PERFECT</span></div>
+        <div class="big red"><span class="ln">TIME</span></div>
+        <div class="hi">इंटरनेट से अपने-आप सही समय</div>
+      </div>
+      <div class="clip cap low" id="cap5" data-start="13.5" data-duration="3.9" data-track-index="2">
+        <span class="chip">FROM YOUR PHONE</span>
+        <div class="big"><span class="ln">TAP AN</span></div>
+        <div class="big red"><span class="ln">EFFECT</span></div>
+        <div class="hi">फ़ोन से कंट्रोल करें</div>
+      </div>
+      <div class="clip cap low" id="cap5b" data-start="17.5" data-duration="2.45" data-track-index="2">
+        <span class="chip">LIVE ON THE CLOCK</span>
+        <div class="big s"><span class="ln">6 DIGIT STYLES</span></div>
+        <div class="big s red"><span class="ln">5 EFFECTS</span></div>
+        <div class="hi">हर इफ़ेक्ट घड़ी पर लाइव</div>
+      </div>
+      <div class="clip cap low" id="cap6" data-start="20.1" data-duration="3.4" data-track-index="2">
+        <span class="chip">BUILT-IN</span>
+        <div class="big red"><span class="ln">STOPWATCH</span></div>
+        <div class="hi">स्टॉपवॉच भी, ऐप से या बटन से</div>
+      </div>
+      <div class="clip cap low" id="cap7" data-start="23.8" data-duration="2.95" data-track-index="2">
+        <span class="chip">YOUR WORDS</span>
+        <div class="big"><span class="ln">YOUR OWN</span></div>
+        <div class="big red"><span class="ln">MESSAGE</span></div>
+        <div class="hi">अपना मैसेज घड़ी पर स्क्रोल करें</div>
+      </div>
+
+      <div id="flash"></div>
+
+      <!-- END CARD -->
+      <div class="clip" id="end" data-start="26.8" data-duration="4.6" data-track-index="3">
+        <div id="end-bg"></div>
+        <div id="end-dots"></div>
+        <div id="end-col">
+          <div id="end-photo"></div>
+          <div id="end-title">BUILD <b>YOURS</b></div>
+          <div id="end-brand"><img src="assets/icon.png" alt="" />DotGlow · ElectroIoT.in</div>
+          <div id="end-pill">Free guide + browser flasher</div>
+          <div id="end-hi">अपनी घड़ी ख़ुद बनाइए · mtpcode.com/flash</div>
+        </div>
+      </div>
+
+      <!-- MUSIC + SOUND EFFECTS (all generated by scripts/make_audio.py) -->
+      <audio id="music" src="assets/audio/music.wav" data-start="0" data-duration="31.4" data-track-index="10" data-volume="0.5"></audio>
+      <audio id="s01" src="assets/audio/sfx-whoosh.wav" data-start="0.28" data-duration="0.55" data-track-index="11" data-volume="0.7"></audio>
+      <audio id="s02" src="assets/audio/sfx-pop.wav" data-start="0.85" data-duration="0.14" data-track-index="12" data-volume="0.8"></audio>
+      <audio id="s03" src="assets/audio/sfx-powerup.wav" data-start="3.0" data-duration="0.9" data-track-index="13" data-volume="0.6"></audio>
+      <audio id="s04" src="assets/audio/sfx-whoosh.wav" data-start="3.12" data-duration="0.55" data-track-index="14" data-volume="0.6"></audio>
+      <audio id="s05" src="assets/audio/sfx-whoosh.wav" data-start="6.28" data-duration="0.55" data-track-index="15" data-volume="0.7"></audio>
+      <audio id="s06" src="assets/audio/sfx-ding.wav" data-start="9.0" data-duration="1.4" data-track-index="16" data-volume="0.55"></audio>
+      <audio id="s07" src="assets/audio/sfx-whoosh.wav" data-start="10.1" data-duration="0.55" data-track-index="17" data-volume="0.7"></audio>
+      <audio id="s08" src="assets/audio/sfx-pop.wav" data-start="10.55" data-duration="0.14" data-track-index="18" data-volume="0.8"></audio>
+      <audio id="s09" src="assets/audio/sfx-whoosh.wav" data-start="13.5" data-duration="0.55" data-track-index="19" data-volume="0.7"></audio>
+      <audio id="s10" src="assets/audio/sfx-pop.wav" data-start="17.52" data-duration="0.14" data-track-index="20" data-volume="0.8"></audio>
+      <audio id="s11" src="assets/audio/sfx-whoosh-down.wav" data-start="17.4" data-duration="0.5" data-track-index="21" data-volume="0.6"></audio>
+      <audio id="s12" src="assets/audio/sfx-whoosh.wav" data-start="20.1" data-duration="0.55" data-track-index="22" data-volume="0.7"></audio>
+      <audio id="s13" src="assets/audio/sfx-click.wav" data-start="20.9" data-duration="0.06" data-track-index="23" data-volume="0.9"></audio>
+      <audio id="s14" src="assets/audio/sfx-whoosh.wav" data-start="23.8" data-duration="0.55" data-track-index="24" data-volume="0.7"></audio>
+      <audio id="s15" src="assets/audio/sfx-swipe.wav" data-start="26.78" data-duration="0.35" data-track-index="25" data-volume="0.8"></audio>
+      <audio id="s16" src="assets/audio/sfx-ding.wav" data-start="27.5" data-duration="1.4" data-track-index="26" data-volume="0.6"></audio>
+      <audio id="s17" src="assets/audio/sfx-pop.wav" data-start="28.4" data-duration="0.14" data-track-index="27" data-volume="0.8"></audio>
     </div>
+
     <script>
+      window.__timelines = window.__timelines || {};
       const tl = gsap.timeline({ paused: true });
-      tl.fromTo("#title", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, 0.2);
+
+      // --- footage: slow push-in on every shot, 0.3 s cross-fades, a punch at the drop
+      const shots = [["w-a", 0, 3.2, 1.0, 1.14], ["w-b", 2.9, 3.4, 1.12, 1.0], ["w-c", 6.0, 4.2, 1.0, 1.08],
+                     ["w-d", 9.9, 3.6, 1.02, 1.12], ["w-e", 13.2, 7.0, 1.0, 1.06], ["w-f", 19.9, 4.0, 1.06, 1.0],
+                     ["w-g", 23.6, 3.5, 1.0, 1.08]];
+      shots.forEach(([id, t, d, s0, s1], i) => {
+        tl.fromTo("#" + id, { scale: s0 }, { scale: s1, duration: d, ease: "none" }, t);
+        if (i > 0) tl.fromTo("#" + id, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power1.out" }, t);
+      });
+      tl.fromTo("#w-b", { scale: 1.22 }, { scale: 1.12, duration: 0.35, ease: "power3.out" }, 3.0);   // punch on the drop
+
+      // --- brand tag + flash at the start
+      tl.to("#brand", { opacity: 1, duration: 0.5 }, 0.2);
+      tl.fromTo("#flash", { opacity: 0 }, { opacity: 0.75, duration: 0.05 }, 0.27);
+      tl.to("#flash", { opacity: 0, duration: 0.25, ease: "power2.out" }, 0.32);
+      tl.fromTo("#flash", { opacity: 0 }, { opacity: 0.55, duration: 0.04, immediateRender: false }, 3.0);
+      tl.to("#flash", { opacity: 0, duration: 0.3, ease: "power2.out" }, 3.04);
+
+      // --- captions: chip drops in, big lines slam in, Hindi line fades up; everything leaves 0.2 s before the end
+      const caps = [["cap1", 0.25, 2.85], ["cap2", 3.15, 2.85], ["cap3", 6.3, 3.5], ["cap4", 10.1, 3.0], ["cap5", 13.5, 3.9],
+                    ["cap5b", 17.5, 2.45], ["cap6", 20.1, 3.4], ["cap7", 23.8, 2.95]];
+      caps.forEach(([id, t, d]) => {
+        const q = (s) => "#" + id + " " + s;
+        tl.fromTo(q(".chip"), { y: -40, opacity: 0, scale: 0.8 }, { y: 0, opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" }, t);
+        tl.fromTo(q(".big"), { y: 90, opacity: 0, scale: 0.86 }, { y: 0, opacity: 1, scale: 1, duration: 0.45, ease: "back.out(1.7)", stagger: 0.12 }, t + 0.1);
+        tl.fromTo(q(".hi"), { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power2.out" }, t + 0.45);
+        tl.to("#" + id, { opacity: 0, y: -30, duration: 0.2, ease: "power1.in" }, t + d - 0.22);
+      });
+
+      // --- end card
+      tl.fromTo("#end", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 26.8);
+      tl.fromTo("#end-photo", { y: 120, opacity: 0, scale: 0.9 }, { y: 0, opacity: 1, scale: 1, duration: 0.6, ease: "back.out(1.5)" }, 26.95);
+      tl.fromTo("#end-title", { y: 70, opacity: 0, scale: 0.9 }, { y: 0, opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.8)" }, 27.35);
+      tl.fromTo("#end-brand", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power2.out" }, 27.7);
+      tl.fromTo("#end-pill", { y: 40, opacity: 0, scale: 0.9 }, { y: 0, opacity: 1, scale: 1, duration: 0.45, ease: "back.out(1.7)" }, 28.2);
+      tl.fromTo("#end-hi", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power2.out" }, 28.6);
+      tl.to("#end-photo", { scale: 1.04, duration: 2.6, ease: "sine.inOut" }, 28.2);
+
       window.__timelines["main"] = tl;
       tl.seek(0);
     </script>
