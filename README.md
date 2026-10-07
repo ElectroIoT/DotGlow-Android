@@ -50,6 +50,8 @@ Package `com.electroiot.dotglow` · app name "DotGlow: LED Matrix Clock".
 
 <p align="center"><img src="docs/system.svg" alt="App to clock over Bluetooth, clock to the internet over WiFi" width="860"></p>
 
+▶ **Watch the 30-second demo:** [YouTube Short](https://www.youtube.com/watch?v=RAMwpgyiXoM)
+
 ## Get the app (closed testing)
 
 DotGlow is in **closed testing on Google Play**. Anyone in the tester group gets it:
