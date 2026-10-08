@@ -28,3 +28,6 @@ video/studio/assets/end-photo.jpg
 
 video/intro/renders/
 video/intro/assets/audio/*.wav
+
+video/intro-vertical/renders/
+video/intro-vertical/assets/audio/*.wav

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en" data-resolution="portrait" data-composition-variables='[{"id":"kicker","type":"string","label":"Chip","default":"SOLDERING + SETUP"},{"id":"title","type":"string","label":"Title","default":"Build DotGlow Step by Step"},{"id":"hindi","type":"string","label":"Hindi line","default":"सोल्डरिंग से सेटअप तक, पूरा तरीक़ा"}]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="assets/mask.js"></script>
+    <style>
+      @font-face { font-family: "Noto Sans Devanagari"; font-style: normal; font-weight: 100 900;
+                   src: url(assets/fonts/noto-sans-devanagari-1.woff2) format("woff2"); }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #07080c; }
+      #root { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #07080c;
+              font-family: Inter, "Noto Sans Devanagari", ui-sans-serif, system-ui, sans-serif; }
+      #stage { position: absolute; inset: 0; }
+      #bgdots { position: absolute; inset: 0; background: radial-gradient(rgba(255,59,59,.16) 2px, transparent 2.4px) 0 0/34px 34px; }
+      #vig { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 42%, rgba(0,0,0,0) 30%, rgba(0,0,0,.78) 100%); }
+      #bloom { position: absolute; left: -60px; top: 260px; width: 1200px; height: 880px; border-radius: 50%;
+               background: radial-gradient(ellipse at center, rgba(255,59,59,.55) 0%, rgba(255,59,59,.18) 45%, rgba(255,59,59,0) 70%); opacity: 0; }
+      #panel { position: absolute; left: 0; top: 330px; width: 1080px; height: 720px; }
+      .d { position: absolute; width: 12px; height: 12px; margin: 4px; border-radius: 50%; background: #5a1517; opacity: 0; }
+      .d.lit { background: #ff3b3b; box-shadow: 0 0 16px 4px rgba(255,59,59,.85); }
+      #scan { position: absolute; top: 330px; left: 0; width: 240px; height: 720px;
+              background: linear-gradient(to right, rgba(255,59,59,0), rgba(255,120,100,.55), rgba(255,255,255,.9) 80%, rgba(255,59,59,0)); filter: blur(10px); opacity: .9; }
+      #txt { position: absolute; left: 0; right: 0; top: 1110px; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 50px; }
+      #chip { background: #ff3b3b; color: #fff; font-weight: 900; font-size: 40px; letter-spacing: .14em; padding: 14px 40px; border-radius: 999px;
+              box-shadow: 0 8px 34px rgba(255,59,59,.6); opacity: 0; }
+      #ttl { margin-top: 34px; max-width: 980px; text-wrap: balance; color: #fff; font-weight: 900; font-size: 88px; line-height: 1.06; letter-spacing: -.02em; text-shadow: 0 8px 40px rgba(0,0,0,.7); opacity: 0; }
+      #hi { margin-top: 24px; max-width: 980px; text-wrap: balance; color: #ffe08a; font-weight: 700; font-size: 52px; line-height: 1.3; opacity: 0; }
+      #dom { position: absolute; left: 0; right: 0; top: 1700px; text-align: center; color: rgba(255,255,255,.7); font-weight: 700; font-size: 34px; letter-spacing: .3em; opacity: 0; }
+      #flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
+      #fade { position: absolute; inset: 0; background: #000; opacity: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="intro-vertical" data-start="0" data-duration="5" data-width="1080" data-height="1920">
+      <div id="stage">
+        <div id="bgdots"></div>
+        <div id="vig"></div>
+        <div id="bloom"></div>
+        <div id="panel"></div>
+        <div id="scan" data-layout-allow-overflow></div>
+        <div id="txt">
+          <span id="chip" data-var-text="kicker">SOLDERING + SETUP</span>
+          <div id="ttl" data-var-text="title">Build DotGlow Step by Step</div>
+          <div id="hi" data-var-text="hindi">सोल्डरिंग से सेटअप तक, पूरा तरीक़ा</div>
+        </div>
+        <div id="dom">ELECTROIOT.IN</div>
+      </div>
+      <div id="flash"></div>
+      <div id="fade"></div>
+      <audio id="sting" src="assets/audio/intro-sting.wav" data-start="0" data-duration="5" data-track-index="5" data-volume="0.85"></audio>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const COLS = 54, ROWS = 36, P = 20, MASK = window.INTRO_MASK;
+      const panel = document.getElementById("panel");
+      const all = [], lit = [], unlit = [];
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+        const el = document.createElement("i");
+        const on = MASK[r][c] === "1";
+        el.className = "d" + (on ? " lit" : "");
+        el.style.left = c * P + "px"; el.style.top = r * P + "px";
+        panel.appendChild(el); all.push(el); (on ? lit : unlit).push(el);
+      }
+      const grid = [COLS, ROWS];
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo("#stage", { scale: 1 }, { scale: 1.05, duration: 5, ease: "none" }, 0);
+      tl.fromTo("#bgdots", { opacity: 0 }, { opacity: 1, duration: 0.6 }, 0);
+      tl.fromTo("#scan", { x: -260 }, { x: 1080, duration: 0.95, ease: "power2.inOut" }, 0.1);
+      tl.to(all, { opacity: 0.22, duration: 0.25, ease: "none", stagger: { amount: 0.9, grid, from: "start", axis: "x" } }, 0.1);
+      tl.to(lit, { opacity: 1, scale: 1.18, duration: 0.28, ease: "back.out(2)", stagger: { amount: 0.55, grid, from: "center" } }, 1.0);
+      tl.to(unlit, { opacity: 0.07, duration: 0.5, ease: "power1.out" }, 1.5);
+      tl.fromTo("#flash", { opacity: 0 }, { opacity: 0.55, duration: 0.05, immediateRender: false }, 1.5);
+      tl.to("#flash", { opacity: 0, duration: 0.3, ease: "power2.out" }, 1.55);
+      tl.fromTo("#bloom", { opacity: 0, scale: 0.7 }, { opacity: 0.85, scale: 1, duration: 0.5, ease: "power3.out" }, 1.5);
+      tl.fromTo("#panel", { scale: 1 }, { scale: 1.035, duration: 0.12, yoyo: true, repeat: 1, ease: "power2.out" }, 1.5);
+      tl.fromTo("#chip", { y: 50, opacity: 0, scale: 0.85 }, { y: 0, opacity: 1, scale: 1, duration: 0.45, ease: "back.out(2)" }, 2.1);
+      tl.fromTo("#ttl", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 2.3);
+      tl.fromTo("#hi", { y: 36, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power2.out" }, 2.6);
+      tl.fromTo("#dom", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.7, ease: "power2.out" }, 2.8);
+      tl.to(lit, { backgroundColor: "#ffffff", duration: 0.1, ease: "none", stagger: { amount: 0.7, grid, from: "start", axis: "x" } }, 3.3);
+      tl.to(lit, { backgroundColor: "#ff3b3b", duration: 0.22, ease: "none", stagger: { amount: 0.7, grid, from: "start", axis: "x" } }, 3.42);
+      tl.to("#fade", { opacity: 1, duration: 0.4, ease: "power1.in" }, 4.6);
+      window.__timelines["intro-vertical"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>
