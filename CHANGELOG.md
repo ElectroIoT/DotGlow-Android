@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.3 (versionCode 6), 2026-10-18
+
+### Changed
+- Rebuild of 1.0.2 with a new version code for the next closed-test upload (no functional changes).
+
 ## 1.0.2 (versionCode 5), 2026-10-06
 
 ### Changed
@@ -39,3 +44,4 @@
 - Reconnect after the app was killed: shorter first attempt, failed connects close their GATT client.
 - A clock that was reset or reflashed: the old pairing is removed and the app pairs again by itself.
 - GATT cache refreshed on connect, so new firmware features are seen.
+
